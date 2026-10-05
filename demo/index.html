@@ -110,6 +110,7 @@ svg text{fill:var(--muted);font-size:10px}
 .focus .hide-focus{display:none!important}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
 .toast.on{opacity:1;transform:translateX(-50%)}
+.pro{font-size:9px;background:var(--yellow);color:#3a2d00;border-radius:6px;padding:1px 4px;margin-left:4px;font-weight:800;vertical-align:2px}
 .demo-flag{background:var(--pink);color:#3a1d28;font-weight:700;font-size:12px;border-radius:999px;padding:3px 9px}
 </style></head>
 <body>
@@ -141,7 +142,7 @@ svg text{fill:var(--muted);font-size:10px}
 <section class="view" id="v-bills">
   <div class="card"><h2>Still to go out this month <span class="r" id="billsLeft"></span></h2><div id="billsMonth"></div></div>
   <div class="card"><h2>Your bills <button class="r btn sm" data-add="bill">+ Bill</button></h2><div id="billList"></div></div>
-  <div class="card"><h2>🔔 Bill reminders</h2><p class="muted" style="font-size:14px;margin-bottom:10px">Put every bill in your phone calendar, with a reminder the day before. Works with Apple, Google and Outlook calendars.</p><button class="btn sm" data-act="ics">Add to my calendar</button></div>
+  <div class="card" id="remCard"><h2>🔔 Bill reminders</h2><p class="muted" style="font-size:14px;margin-bottom:10px">Put every bill in your phone calendar, with a reminder the day before. Works with Apple, Google and Outlook calendars.</p><button class="btn sm" data-act="ics">Add to my calendar</button></div>
 </section>
 
 <!-- MONTH -->
@@ -169,7 +170,7 @@ svg text{fill:var(--muted);font-size:10px}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn sm" data-act="backup">Download a backup</button>
       <label class="btn sm alt">Restore a backup<input type="file" id="restore" accept=".json,application/json" hidden></label>
-      <button class="btn sm alt" data-act="xlsx">Export to Excel</button>
+      <button class="btn sm alt" data-act="xlsx" id="xlsxBtn">Export to Excel</button>
       <button class="btn sm alt" data-act="csv">Export spending (CSV)</button>
       <button class="btn sm alt" data-act="example">Show example numbers</button>
       <button class="btn sm bad" data-act="fresh">Start fresh</button>
@@ -188,6 +189,8 @@ svg text{fill:var(--muted);font-size:10px}
 
 <script>
 const DEMO = true;
+const PRO = /*PRO*/true;
+const PROTABS = ['accounts', 'insights', 'subs', 'split', 'challenge'];
 const DEMO_LIMIT = 40;
 const KEY = DEMO ? 'calmbudget.demo.v1' : 'calmbudget.v1';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -570,6 +573,7 @@ function render() {
   $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + U.view));
   $('#demoBanner').innerHTML = DEMO ? `<div class="banner"><span class="demo-flag">FREE DEMO</span><span style="flex:1">The real app. Log up to ${DEMO_LIMIT} spends to try it. <b>${Math.max(0, DEMO_LIMIT - S.spends.filter(x => !x.ex).length)} left.</b></span></div>` : '';
   $('#exampleBanner').innerHTML = S.settings.example ? `<div class="banner"><span style="flex:1"><b>These are example numbers.</b> Look around, tap anything. When you're ready, start your own plan in 4 small steps.</span><button class="btn sm" data-act="start">Start mine</button></div>` : '';
+  $('#remCard').style.display = PRO ? '' : 'none'; $('#xlsxBtn').style.display = PRO ? '' : 'none';
   ({ today: vToday, bills: vBills, month: vMonth, plan: vPlan, settings: vSettings })[U.view]();
 }
 function vToday() {
@@ -651,9 +655,9 @@ function vMonth() {
 function catColor(c) { const i = Math.max(0, S.cats.indexOf(c)); return COLORS[i % COLORS.length]; }
 function vPlan() {
   const all = S.settings.mode === 'all';
-  const tabs = [['money', 'Money in'], ['accounts', 'Accounts'], ['goals', 'Savings'], ['insights', 'Insights'], ['subs', 'Subscriptions'], ['split', 'Shared'], ['challenge', 'No-spend']].concat(all ? [['envelopes', 'Envelopes'], ['debt', 'Debt'], ['wins', 'Milestones']] : []).concat([['dump', 'Brain dump']]);
+  const tabs = [['money', 'Money in'], ['accounts', 'Accounts'], ['goals', 'Savings'], ['insights', 'Insights'], ['subs', 'Subscriptions'], ['split', 'Shared'], ['challenge', 'No-spend']].filter(t => PRO || !PROTABS.includes(t[0])).concat(all ? [['envelopes', 'Envelopes'], ['debt', 'Debt'], ['wins', 'Milestones']] : []).concat([['dump', 'Brain dump']]);
   if (!tabs.some(t => t[0] === U.plan)) U.plan = 'money';
-  $('#planSeg').innerHTML = tabs.map(([k, l]) => `<button class="${U.plan === k ? 'on' : ''}" data-plan="${k}">${l}</button>`).join('');
+  $('#planSeg').innerHTML = tabs.map(([k, l]) => `<button class="${U.plan === k ? 'on' : ''}" data-plan="${k}">${l}${DEMO && PROTABS.includes(k) ? '<span class="pro">PRO</span>' : ''}</button>`).join('');
   $('#planSeg').style.overflowX = 'auto';
   const t = today(), ym = iso(t).slice(0, 7); let h = '';
   if (U.plan === 'money') {
@@ -866,7 +870,7 @@ function vSettings() {
   <div class="field"><label>Currency</label><select data-set="currency">${CURRENCIES.map(([c, l]) => `<option value="${c}" ${c === s.currency ? 'selected' : ''}>${c} · ${l}</option>`).join('')}</select></div>
   <div class="field"><label>Bank balance</label><button class="btn alt" data-act="balance" style="width:100%;text-align:left">${s.balance == null ? 'Add my balance' : money(balanceNow(), true) + ' · update'}</button></div>
   <div class="field"><label>Cushion (never counted as spendable)</label><input data-set="cushion" inputmode="decimal" value="${esc(s.cushion)}"></div>
-  <div class="field"><label>Theme</label><div class="chips" style="margin:0">${[['soft', '☁️ Soft Spectrum'], ['rose', '🌸 Rose'], ['sage', '🌿 Sage'], ['midnight', '🌙 Midnight'], ['black', '⚫ Black']].map(([k, l]) => `<button class="chip ${s.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div></div>
+  <div class="field"><label>Theme</label><div class="chips" style="margin:0">${[['soft', '☁️ Soft Spectrum'], ['rose', '🌸 Rose'], ['sage', '🌿 Sage'], ['midnight', '🌙 Midnight'], ['black', '⚫ Black']].filter(t => PRO || ['soft', 'midnight'].includes(t[0])).map(([k, l]) => `<button class="chip ${s.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div></div>
   <div class="field"><label>How much to show</label><div class="seg" style="margin:0"><button class="${s.mode === 'simple' ? 'on' : ''}" data-mode="simple">Simple</button><button class="${s.mode === 'all' ? 'on' : ''}" data-mode="all">Everything</button></div><div class="hint">Simple hides envelopes, debt and milestones. Nothing is ever deleted.</div></div>
   <div class="field"><label>Quick buttons</label><button class="btn alt" data-act="favs" style="width:100%;text-align:left">${(S.favs || []).length ? S.favs.map(f => esc(f.note || f.cat) + ' ' + m2(num(f.amt))).join(', ') : 'Add your usual spends'}</button></div>
   <div class="field"><label>Spending categories</label><button class="btn alt" data-act="cats" style="width:100%;text-align:left">${S.cats.map(esc).join(', ')}</button></div>`;
