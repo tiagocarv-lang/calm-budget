@@ -12,19 +12,19 @@
 :root{--bg:#F7F6FB;--card:#fff;--ink:#2D2A3E;--muted:#7C7891;--line:#ECE9F3;--soft:#F1EEF8;
 --pink:#F5B8C8;--peach:#FFD3A8;--yellow:#FFE7A3;--mint:#BFE8D3;--sky:#BFDDF5;--lilac:#D7C8F2;
 --good:#3E9C74;--warn:#D98B2B;--bad:#D45D6E;--acc:#7C64C8;--accInk:#fff;--big:#2D2A3E}
-[data-theme=midnight]{--bg:#0E1630;--card:#17213F;--ink:#E9ECF8;--muted:#9AA3C4;--line:#24305A;--soft:#1D2A50;
+html[data-theme=midnight]{--bg:#0E1630;--card:#17213F;--ink:#E9ECF8;--muted:#9AA3C4;--line:#24305A;--soft:#1D2A50;
 --pink:#FF8FB1;--peach:#FFB27A;--yellow:#FFD86B;--mint:#5FE0A8;--sky:#6CC3FF;--lilac:#B39BFF;
 --good:#5FE0A8;--warn:#FFB27A;--bad:#FF8FA0;--acc:#B39BFF;--accInk:#0E1630;--big:#fff}
-[data-theme=rose]{--bg:#FFF5F7;--card:#fff;--ink:#3A2630;--muted:#8E7480;--line:#F5E1E8;--soft:#FCEDF2;
+html[data-theme=rose]{--bg:#FFF5F7;--card:#fff;--ink:#3A2630;--muted:#8E7480;--line:#F5E1E8;--soft:#FCEDF2;
 --pink:#F7B6CA;--peach:#FFD0B5;--yellow:#FFE3B0;--mint:#F9CFDC;--sky:#F7D9E6;--lilac:#EFC3D6;
 --good:#3E9C74;--warn:#D98B2B;--bad:#C94B6A;--acc:#D45F8A;--accInk:#fff;--big:#3A2630}
-[data-theme=sage]{--bg:#F3F6F1;--card:#fff;--ink:#25332A;--muted:#6E7E72;--line:#E1E9DD;--soft:#EAF0E6;
+html[data-theme=sage]{--bg:#F3F6F1;--card:#fff;--ink:#25332A;--muted:#6E7E72;--line:#E1E9DD;--soft:#EAF0E6;
 --pink:#F2C6C0;--peach:#F6D6B0;--yellow:#EFE4AE;--mint:#C3DEBB;--sky:#CFE3D6;--lilac:#D8E6C9;
 --good:#3E8A5A;--warn:#C98A2B;--bad:#C8586A;--acc:#5B8A66;--accInk:#fff;--big:#25332A}
-[data-theme=black]{--bg:#000;--card:#111113;--ink:#F3F3F5;--muted:#9C9CA6;--line:#232328;--soft:#1B1B20;
+html[data-theme=black]{--bg:#000;--card:#111113;--ink:#F3F3F5;--muted:#9C9CA6;--line:#232328;--soft:#1B1B20;
 --pink:#FF8FB1;--peach:#FFB27A;--yellow:#FFD86B;--mint:#5FE0A8;--sky:#6CC3FF;--lilac:#B39BFF;
 --good:#5FE0A8;--warn:#FFB27A;--bad:#FF8FA0;--acc:#FFFFFF;--accInk:#000;--big:#fff}
-[data-theme=black] .hero{background:linear-gradient(135deg,#1E1E26,#121218);color:#fff}[data-theme=black] .pill{background:rgba(255,255,255,.12)}[data-theme=black] .hero.neg .num{color:#FF9DAE}
+html[data-theme=black] .hero{background:linear-gradient(135deg,#1E1E26,#121218);color:#fff}html[data-theme=black] .pill{background:rgba(255,255,255,.12)}html[data-theme=black] .hero.neg .num{color:#FF9DAE}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -43,15 +43,15 @@ main{max-width:1000px;margin:0 auto;padding:6px 16px 20px}
 .grid2{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:820px){.grid2{grid-template-columns:1fr 1fr}.grid2 .card{margin-bottom:0}}
 .hero{text-align:center;padding:26px 18px 20px;background:linear-gradient(135deg,var(--lilac),var(--sky) 55%,var(--mint));border:0;color:#2D2A3E}
-[data-theme=midnight] .hero{background:linear-gradient(135deg,#2A2470,#18406E 55%,#145A4C);color:#fff}
+html[data-theme=midnight] .hero{background:linear-gradient(135deg,#2A2470,#18406E 55%,#145A4C);color:#fff}
 .hero .lbl{font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.75}
 .hero .num{font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;margin:6px 0 2px}
 .hero .sub{font-size:15px;opacity:.85}
 .hero .how{margin-top:12px;font-size:14px;font-weight:600;text-decoration:underline;opacity:.85}
-.hero.neg .num{color:#B23A4E}[data-theme=midnight] .hero.neg .num{color:#FF9DAE}
+.hero.neg .num{color:#B23A4E}html[data-theme=midnight] .hero.neg .num{color:#FF9DAE}
 .pillrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
 .pill{background:rgba(255,255,255,.55);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
-[data-theme=midnight] .pill{background:rgba(255,255,255,.12)}
+html[data-theme=midnight] .pill{background:rgba(255,255,255,.12)}
 .now{display:flex;gap:12px;align-items:center}
 .now .dot{width:44px;height:44px;border-radius:14px;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
 .now .t{flex:1;font-weight:600}.now .t small{display:block;color:var(--muted);font-weight:500;font-size:13px}
