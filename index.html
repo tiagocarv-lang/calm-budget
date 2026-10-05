@@ -15,6 +15,16 @@
 [data-theme=midnight]{--bg:#0E1630;--card:#17213F;--ink:#E9ECF8;--muted:#9AA3C4;--line:#24305A;--soft:#1D2A50;
 --pink:#FF8FB1;--peach:#FFB27A;--yellow:#FFD86B;--mint:#5FE0A8;--sky:#6CC3FF;--lilac:#B39BFF;
 --good:#5FE0A8;--warn:#FFB27A;--bad:#FF8FA0;--acc:#B39BFF;--accInk:#0E1630;--big:#fff}
+[data-theme=rose]{--bg:#FFF5F7;--card:#fff;--ink:#3A2630;--muted:#8E7480;--line:#F5E1E8;--soft:#FCEDF2;
+--pink:#F7B6CA;--peach:#FFD0B5;--yellow:#FFE3B0;--mint:#F9CFDC;--sky:#F7D9E6;--lilac:#EFC3D6;
+--good:#3E9C74;--warn:#D98B2B;--bad:#C94B6A;--acc:#D45F8A;--accInk:#fff;--big:#3A2630}
+[data-theme=sage]{--bg:#F3F6F1;--card:#fff;--ink:#25332A;--muted:#6E7E72;--line:#E1E9DD;--soft:#EAF0E6;
+--pink:#F2C6C0;--peach:#F6D6B0;--yellow:#EFE4AE;--mint:#C3DEBB;--sky:#CFE3D6;--lilac:#D8E6C9;
+--good:#3E8A5A;--warn:#C98A2B;--bad:#C8586A;--acc:#5B8A66;--accInk:#fff;--big:#25332A}
+[data-theme=black]{--bg:#000;--card:#111113;--ink:#F3F3F5;--muted:#9C9CA6;--line:#232328;--soft:#1B1B20;
+--pink:#FF8FB1;--peach:#FFB27A;--yellow:#FFD86B;--mint:#5FE0A8;--sky:#6CC3FF;--lilac:#B39BFF;
+--good:#5FE0A8;--warn:#FFB27A;--bad:#FF8FA0;--acc:#FFFFFF;--accInk:#000;--big:#fff}
+[data-theme=black] .hero{background:linear-gradient(135deg,#1E1E26,#121218);color:#fff}[data-theme=black] .pill{background:rgba(255,255,255,.12)}[data-theme=black] .hero.neg .num{color:#FF9DAE}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -388,6 +398,24 @@ const I18N = {
   'Open the file to add reminders to your calendar': ['Ouvre le fichier pour ajouter les rappels à ton calendrier', 'Abre el archivo para añadir los avisos a tu calendario', 'Öffne die Datei, um die Erinnerungen in den Kalender zu übernehmen'],
   'Export to Excel': ['Exporter vers Excel', 'Exportar a Excel', 'Nach Excel exportieren'], 'Spending': ['Dépenses', 'Gastos', 'Ausgaben'], 'Note': ['Note', 'Nota', 'Notiz'],
   '{0} {1}': ['{0} {1}', '{0} {1}', '{0} {1}'],
+  // subscriptions, shared costs, no-spend challenge, themes
+  'Subscriptions': ['Abonnements', 'Suscripciones', 'Abos'], '+ Subscription': ['+ Abonnement', '+ Suscripción', '+ Abo'], 'Per month': ['Par mois', 'Al mes', 'Pro Monat'], 'Per year': ['Par an', 'Al año', 'Pro Jahr'],
+  '{0}/year': ['{0}/an', '{0}/año', '{0}/Jahr'], '✂️ To cancel': ['✂️ À résilier', '✂️ Cancelar', '✂️ Kündigen'], 'Cancel?': ['Résilier ?', '¿Cancelar?', 'Kündigen?'],
+  'Netflix, Spotify, gym, apps… Tick “This is a subscription” on a bill to see it here.': ['Netflix, Spotify, salle, applis… Coche « C\'est un abonnement » sur une facture pour la voir ici.', 'Netflix, Spotify, gimnasio, apps… Marca «Es una suscripción» en una factura para verla aquí.', 'Netflix, Spotify, Fitness, Apps… Hake bei einer Rechnung „Das ist ein Abo" an, um sie hier zu sehen.'],
+  '✂️ Cancel the marked ones and keep': ['✂️ Résilie ceux marqués et garde', '✂️ Cancela los marcados y ahorra', '✂️ Kündige die markierten und behalte'], 'a year.': ['par an.', 'al año.', 'im Jahr.'],
+  'This is a subscription': ["C'est un abonnement", 'Es una suscripción', 'Das ist ein Abo'],
+  'Shared': ['Partagé', 'Compartido', 'Geteilt'], 'Who owes who': ['Qui doit à qui', 'Quién debe a quién', 'Wer schuldet wem'], 'Settle up': ['Régler', 'Saldar', 'Ausgleichen'], 'All square. 🤝': ['Tout est réglé. 🤝', 'Todo en paz. 🤝', 'Alles ausgeglichen. 🤝'],
+  'Edit people': ['Modifier les personnes', 'Editar personas', 'Personen bearbeiten'], 'Shared costs': ['Dépenses partagées', 'Gastos compartidos', 'Geteilte Kosten'], '+ Shared cost': ['+ Dépense partagée', '+ Gasto compartido', '+ Geteilte Ausgabe'],
+  'Rent, groceries, a night out… split equally, no maths.': ['Loyer, courses, une sortie… partagé à parts égales, sans calcul.', 'Alquiler, súper, una salida… a partes iguales, sin cuentas.', 'Miete, Einkauf, ein Abend aus… gleich geteilt, ohne Rechnen.'],
+  'Add a shared cost': ['Ajouter une dépense partagée', 'Añadir gasto compartido', 'Geteilte Ausgabe hinzufügen'], 'Edit shared cost': ['Modifier la dépense partagée', 'Editar gasto compartido', 'Geteilte Ausgabe bearbeiten'],
+  'Groceries, rent, dinner…': ['Courses, loyer, resto…', 'Súper, alquiler, cena…', 'Einkauf, Miete, Essen…'], 'Paid by': ['Payé par', 'Pagado por', 'Bezahlt von'], 'Shared cost': ['Dépense partagée', 'Gasto compartido', 'Geteilte Ausgabe'],
+  'People': ['Personnes', 'Personas', 'Personen'], 'Add at least 2 people': ['Ajoute au moins 2 personnes', 'Añade al menos 2 personas', 'Mindestens 2 Personen'], 'Settled up 🤝': ['Réglé 🤝', 'Saldado 🤝', 'Ausgeglichen 🤝'],
+  'Me': ['Moi', 'Yo', 'Ich'], 'Partner': ['Partenaire', 'Pareja', 'Partner'], 'Dinner out': ['Resto', 'Cena fuera', 'Essen gehen'],
+  'No-spend': ['Zéro dépense', 'Sin gastar', 'Ohne Ausgaben'], '🌱 30-day no-spend challenge': ['🌱 Défi 30 jours sans dépense', '🌱 Reto de 30 días sin gastar', '🌱 30-Tage-Challenge ohne Ausgaben'],
+  "See how many days you can go without buying anything extra. Bills don't count. Missed a day? No streak to break, just keep going.": ["Combien de jours sans rien acheter en plus ? Les factures ne comptent pas. Un jour raté ? Pas de série à casser, continue.", 'Mira cuántos días aguantas sin comprar nada extra. Las facturas no cuentan. ¿Fallaste un día? No hay racha que romper, sigue.', 'Wie viele Tage schaffst du ohne Extra-Käufe? Rechnungen zählen nicht. Einen Tag verpasst? Keine Serie reißt, einfach weiter.'],
+  'Start the challenge': ['Lancer le défi', 'Empezar el reto', 'Challenge starten'], '🌱 No-spend challenge': ['🌱 Défi zéro dépense', '🌱 Reto sin gastar', '🌱 Challenge ohne Ausgaben'],
+  "Green = nothing bought that day. Bills don't count.": ['Vert = rien acheté ce jour-là. Les factures ne comptent pas.', 'Verde = no compraste nada ese día. Las facturas no cuentan.', 'Grün = an dem Tag nichts gekauft. Rechnungen zählen nicht.'], 'Start again': ['Recommencer', 'Empezar de nuevo', 'Neu starten'],
+  '🌸 Rose': ['🌸 Rose', '🌸 Rosa', '🌸 Rosé'], '🌿 Sage': ['🌿 Sauge', '🌿 Salvia', '🌿 Salbei'], '⚫ Black': ['⚫ Noir', '⚫ Negro', '⚫ Schwarz'],
   // templates ({0}, {1} = numbers, dates or names)
   'Hi {0}': ['Salut {0}', 'Hola {0}', 'Hallo {0}'], '{0} days to payday': ['{0} j avant la paie', '{0} días para el cobro', 'Noch {0} Tage bis Zahltag'],
   'Spent today {0}': ["Dépensé aujourd'hui {0}", 'Gastado hoy {0}', 'Heute ausgegeben {0}'], '{0} a day': ['{0} par jour', '{0} al día', '{0} pro Tag'],
@@ -409,7 +437,7 @@ const PAT = [[/^Hi (.+)$/, 'Hi {0}'], [/^🎯 (.+)$/, '🎯 {0}'], [/^(\p{Extend
   [/^Was (.+) paid\?$/, 'Was {0} paid?'], [/^It was due (.+)$/, 'It was due {0}'], [/^Was due (.+)$/, 'Was due {0}'], [/^(.+) goes out today$/, '{0} goes out today'], [/^Payday: (.+)$/, 'Payday: {0}'],
   [/^The real app\. Log up to (\d+) spends to try it\.$/, 'The real app. Log up to {0} spends to try it.'], [/^(\d+) left\.$/, '{0} left.'],
   [/^It's been (\d+) days\. Three quick steps and every number is right again: tick the bills that went out, add money that came in, then type your bank balance\.$/, "It's been {0} days. Three quick steps and every number is right again: tick the bills that went out, add money that came in, then type your bank balance."],
-  [/^next (.+)$/, 'next {0}'], [/^(.+)\/month set aside$/, '{0}/month set aside'], [/^min (.+)\/month$/, 'min {0}/month'], [/^(.*\d.*)\/month$/, '{0}/month'], [/^free by (.+)$/, 'free by {0}'],
+  [/^next (.+)$/, 'next {0}'], [/^(.+)\/month set aside$/, '{0}/month set aside'], [/^min (.+)\/month$/, 'min {0}/month'], [/^(.*\d.*)\/month$/, '{0}/month'], [/^(.*\d.*)\/year$/, '{0}/year'], [/^free by (.+)$/, 'free by {0}'],
   [/^Every few months \(every (\d+) months\)$/, 'Every few months (every {0} months)'], [/^(.*\d.*?) left of (.*\d.*)$/, '{0} left of {1}'], [/^(.*\d.*?) of (.*\d.*)$/, '{0} of {1}'],
   [/^Over by (.+), that's ok$/, "Over by {0}, that's ok"], [/^Set aside for (.+)$/, 'Set aside for {0}'], [/^Days until payday \((.+)\)$/, 'Days until payday ({0})'], [/^\((.+)\)$/, '({0})'],
   [/^Payments: (.+?) on (.+)$/, 'Payments: {0} on {1}'], [/^(.*\d.*?) on (.+)$/, '{0} on {1}'], [/^(.+) logged$/, '{0} logged']];
@@ -534,7 +562,7 @@ function calc() {
 const VIEWS = [['today', 'Today', '☀︎'], ['bills', 'Bills', '✓'], ['month', 'Month', '▦'], ['plan', 'Plan', '◔'], ['settings', 'Settings', '⚙︎']];
 function render() {
   document.documentElement.dataset.theme = S.settings.theme; document.documentElement.lang = lang();
-  document.querySelector('meta[name=theme-color]').content = S.settings.theme === 'midnight' ? '#0E1630' : '#F7F6FB';
+  document.querySelector('meta[name=theme-color]').content = ({ midnight: '#0E1630', black: '#000000', rose: '#FFF5F7', sage: '#F3F6F1' })[S.settings.theme] || '#F7F6FB';
   document.body.classList.toggle('focus', U.focus);
   $('#hTitle').textContent = S.settings.title || 'My calm money plan';
   $('#hSub').textContent = (S.settings.name ? 'Hi ' + S.settings.name + ' · ' : '') + fd(today());
@@ -623,7 +651,7 @@ function vMonth() {
 function catColor(c) { const i = Math.max(0, S.cats.indexOf(c)); return COLORS[i % COLORS.length]; }
 function vPlan() {
   const all = S.settings.mode === 'all';
-  const tabs = [['money', 'Money in'], ['accounts', 'Accounts'], ['goals', 'Savings'], ['insights', 'Insights']].concat(all ? [['envelopes', 'Envelopes'], ['debt', 'Debt'], ['wins', 'Milestones']] : []).concat([['dump', 'Brain dump']]);
+  const tabs = [['money', 'Money in'], ['accounts', 'Accounts'], ['goals', 'Savings'], ['insights', 'Insights'], ['subs', 'Subscriptions'], ['split', 'Shared'], ['challenge', 'No-spend']].concat(all ? [['envelopes', 'Envelopes'], ['debt', 'Debt'], ['wins', 'Milestones']] : []).concat([['dump', 'Brain dump']]);
   if (!tabs.some(t => t[0] === U.plan)) U.plan = 'money';
   $('#planSeg').innerHTML = tabs.map(([k, l]) => `<button class="${U.plan === k ? 'on' : ''}" data-plan="${k}">${l}</button>`).join('');
   $('#planSeg').style.overflowX = 'auto';
@@ -635,6 +663,9 @@ function vPlan() {
       <div class="card"><h2>Money that came in <button class="r btn sm" data-act="addIncome">+ Money in</button></h2>${S.income.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 25).map(x => `<div class="row" data-edit-income="${x.id}"><div class="main"><b>${esc(x.note || 'Money in')}</b><small>${fd(parse(x.date))}</small></div><div class="amt good">+${m2(num(x.amt))}</div></div>`).join('') || '<div class="empty">Paychecks, refunds, gifts, side income…</div>'}</div>`;
   } else if (U.plan === 'accounts') { h = vAccounts();
   } else if (U.plan === 'insights') { h = vInsights();
+  } else if (U.plan === 'subs') { h = vSubs();
+  } else if (U.plan === 'split') { h = vSplit();
+  } else if (U.plan === 'challenge') { h = vChallenge();
   } else if (U.plan === 'goals') {
     h = `<div class="card"><h2>Savings goals <button class="r btn sm" data-add="goal">+ Goal</button></h2>${S.goals.length ? S.goals.map(g => { const p = Math.min(1, num(g.saved) / Math.max(1, num(g.target))); return `<div class="row" data-edit-goal="${g.id}" style="flex-wrap:wrap"><div class="main"><b>${esc(g.name)}</b><small>${m2(num(g.saved))} of ${m2(num(g.target))}</small></div><div class="amt">${Math.round(p * 100)}%</div><div class="bar" style="flex-basis:100%"><i style="width:${p * 100}%"></i></div></div>`; }).join('') : '<div class="empty">A holiday, an emergency fund, a new laptop…</div>'}
       ${S.goals.length ? '<p class="muted" style="font-size:13px;margin-top:8px">Tap a goal to add money to it.</p>' : ''}</div>
@@ -759,6 +790,54 @@ function xlsxExport() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = 'calm-budget-' + iso(today()) + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
 }
 
+/* ---------- subscriptions ---------- */
+const perMonth = b => { const a = num(b.amt); return { monthly: a, twice: a * 2, weekly: a * 52 / 12, biweekly: a * 26 / 12, months: a / Math.max(1, +b.every || 3), once: 0 }[b.freq] || 0; };
+function vSubs() {
+  const subs = S.bills.filter(b => b.sub), mo = subs.reduce((s, b) => s + perMonth(b), 0), cut = subs.filter(b => b.cancel).reduce((s, b) => s + perMonth(b), 0);
+  return `<div class="card"><h2>Subscriptions <button class="r btn sm" data-act="addSub">+ Subscription</button></h2>
+    <div class="sumrow" style="grid-template-columns:1fr 1fr;margin-bottom:10px"><div><small>Per month</small><b>${m2(mo)}</b></div><div><small>Per year</small><b class="warn">${money(mo * 12)}</b></div></div>
+    ${subs.length ? subs.map(b => `<div class="row"><div class="main" data-edit-bill="${b.id}"><b style="${b.cancel ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(b.name)}</b><small>${m2(perMonth(b))}/month · ${money(perMonth(b) * 12)}/year</small></div><button class="chip ${b.cancel ? 'on' : ''}" data-subcancel="${b.id}">${b.cancel ? '✂️ To cancel' : 'Cancel?'}</button></div>`).join('') : '<div class="empty">Netflix, Spotify, gym, apps… Tick “This is a subscription” on a bill to see it here.</div>'}
+    ${cut ? `<p style="font-size:14px;margin-top:10px">✂️ Cancel the marked ones and keep <b class="good">${money(cut * 12)}</b> a year.</p>` : ''}</div>`;
+}
+
+/* ---------- shared costs (couple / roommates) ---------- */
+const SP = () => (S.split = S.split || { people: [tx('Me'), tx('Partner')], items: [] });
+function splitNet() {
+  const sp = SP(), n = sp.people.length, net = sp.people.map(() => 0);
+  sp.items.forEach(x => { const a = num(x.amt); if (x.kind === 'settle') { net[x.by] += a; net[x.to] -= a; } else { net[x.by] += a; sp.people.forEach((_, i) => net[i] -= a / n); } });
+  const pos = net.map((v, i) => [i, v]).filter(x => x[1] > 0.005).sort((a, b) => b[1] - a[1]), neg = net.map((v, i) => [i, -v]).filter(x => x[1] > 0.005).sort((a, b) => b[1] - a[1]), out = [];
+  while (pos.length && neg.length) { const p = pos[0], q = neg[0], v = Math.min(p[1], q[1]); out.push({ from: q[0], to: p[0], amt: Math.round(v * 100) / 100 }); p[1] -= v; q[1] -= v; if (p[1] < 0.005) pos.shift(); if (q[1] < 0.005) neg.shift(); }
+  return out;
+}
+function vSplit() {
+  const sp = SP(), owe = splitNet(), P = i => esc(sp.people[i] ?? '?');
+  return `<div class="card"><h2>Who owes who</h2>${owe.length ? owe.map(o => `<div class="row"><div class="main"><b>${P(o.from)} → ${P(o.to)}</b></div><div class="amt">${m2(o.amt)}</div><button class="btn sm alt" data-settle="${o.from}-${o.to}-${o.amt}">Settle up</button></div>`).join('') : '<div class="empty">All square. 🤝</div>'}
+    <p class="muted" style="font-size:13px;margin-top:8px">${sp.people.map(esc).join(' · ')} <button class="chip" data-act="people" style="margin-left:6px">Edit people</button></p></div>
+    <div class="card"><h2>Shared costs <button class="r btn sm" data-act="addShared">+ Shared cost</button></h2>${sp.items.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 40).map(x => `<div class="row" data-edit-shared="${x.id}"><div class="main"><b>${x.kind === 'settle' ? '🤝 ' + P(x.by) + ' → ' + P(x.to) : esc(x.what)}</b><small>${fd(parse(x.date))}${x.kind === 'settle' ? '' : ' · ' + P(x.by)}</small></div><div class="amt">${m2(num(x.amt))}</div></div>`).join('') || '<div class="empty">Rent, groceries, a night out… split equally, no maths.</div>'}</div>`;
+}
+function sharedForm(x) {
+  const sp = SP(), isNew = !x; x = x || { date: iso(today()), what: '', amt: '', by: 0, kind: 'exp' };
+  openForm(isNew ? 'Add a shared cost' : 'Edit shared cost', [{ k: 'what', l: 'What was it?', v: x.what, ph: 'Groceries, rent, dinner…' }, { k: 'amt', l: 'Amount', t: 'num', v: x.amt }, { k: 'by', l: 'Paid by', t: 'select', opts: sp.people.map((p, i) => [i, p]), v: x.by }, { k: 'date', l: 'Date', t: 'date', v: x.date }],
+    v => { if (!num(v.amt)) return toast(tx('Type an amount')); Object.assign(x, { what: v.what || tx('Shared cost'), amt: num(v.amt), by: +v.by, date: v.date || iso(today()) }); if (isNew) { x.id = uid(); sp.items.push(x); } done(); },
+    isNew ? null : () => { sp.items = sp.items.filter(y => y !== x); done(); });
+}
+
+/* ---------- 30-day no-spend challenge ---------- */
+function vChallenge() {
+  const c = S.challenge, t = today();
+  if (!c) return `<div class="card" style="text-align:center"><h2 style="justify-content:center">🌱 30-day no-spend challenge</h2><p class="muted" style="font-size:14px;margin:6px 0 14px">See how many days you can go without buying anything extra. Bills don't count. Missed a day? No streak to break, just keep going.</p><button class="btn" data-act="challenge">Start the challenge</button></div>`;
+  const st = parse(c.start), days = [...Array(30)].map((_, i) => addDays(st, i)), past = days.filter(d => d <= t);
+  const free = past.filter(d => d < t ? !spentOn(iso(d)) : !spentOn(iso(d))).length;
+  const BADGES = [[3, '🌱'], [7, '🌿'], [14, '🌳'], [21, '🏅'], [30, '🏆']];
+  return `<div class="card"><h2>🌱 No-spend challenge <span class="r">${free} / 30</span></h2>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">${days.map((d, i) => { const k = iso(d), fut = d > t, sp = spentOn(k), isT = k === iso(t);
+      return `<div style="aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:${fut ? 'var(--soft)' : sp ? 'var(--peach)' : 'var(--mint)'};${isT ? 'outline:2px solid var(--acc)' : ''};opacity:${fut ? .55 : 1}"><span style="font-size:10px;opacity:.7">${i + 1}</span>${fut ? '' : sp ? '·' : '✓'}</div>`; }).join('')}</div>
+    <div class="bar" style="margin-top:12px"><i style="width:${free / 30 * 100}%"></i></div>
+    <div style="display:flex;justify-content:space-around;margin-top:14px">${BADGES.map(([n, e]) => `<div style="text-align:center;opacity:${free >= n ? 1 : .3};filter:${free >= n ? 'none' : 'grayscale(1)'}"><div style="font-size:26px">${e}</div><small class="muted" style="font-size:11px;font-weight:700">${n}</small></div>`).join('')}</div>
+    <p class="muted" style="font-size:13px;margin-top:10px">Green = nothing bought that day. Bills don't count.</p>
+    <button class="btn sm alt" data-act="challenge" style="margin-top:8px">Start again</button></div>`;
+}
+
 function payoff(d) {
   const B = num(d.bal), r = num(d.rate) / 1200, P = num(d.min); if (B <= 0) return 'paid off 🎉'; if (P <= 0) return 'add a monthly payment';
   if (r > 0 && P <= r * B) return 'minimum doesn\'t cover interest';
@@ -787,7 +866,7 @@ function vSettings() {
   <div class="field"><label>Currency</label><select data-set="currency">${CURRENCIES.map(([c, l]) => `<option value="${c}" ${c === s.currency ? 'selected' : ''}>${c} · ${l}</option>`).join('')}</select></div>
   <div class="field"><label>Bank balance</label><button class="btn alt" data-act="balance" style="width:100%;text-align:left">${s.balance == null ? 'Add my balance' : money(balanceNow(), true) + ' · update'}</button></div>
   <div class="field"><label>Cushion (never counted as spendable)</label><input data-set="cushion" inputmode="decimal" value="${esc(s.cushion)}"></div>
-  <div class="field"><label>Theme</label><div class="seg" style="margin:0"><button class="${s.theme === 'soft' ? 'on' : ''}" data-theme="soft">☁️ Soft Spectrum</button><button class="${s.theme === 'midnight' ? 'on' : ''}" data-theme="midnight">🌙 Midnight</button></div></div>
+  <div class="field"><label>Theme</label><div class="chips" style="margin:0">${[['soft', '☁️ Soft Spectrum'], ['rose', '🌸 Rose'], ['sage', '🌿 Sage'], ['midnight', '🌙 Midnight'], ['black', '⚫ Black']].map(([k, l]) => `<button class="chip ${s.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div></div>
   <div class="field"><label>How much to show</label><div class="seg" style="margin:0"><button class="${s.mode === 'simple' ? 'on' : ''}" data-mode="simple">Simple</button><button class="${s.mode === 'all' ? 'on' : ''}" data-mode="all">Everything</button></div><div class="hint">Simple hides envelopes, debt and milestones. Nothing is ever deleted.</div></div>
   <div class="field"><label>Quick buttons</label><button class="btn alt" data-act="favs" style="width:100%;text-align:left">${(S.favs || []).length ? S.favs.map(f => esc(f.note || f.cat) + ' ' + m2(num(f.amt))).join(', ') : 'Add your usual spends'}</button></div>
   <div class="field"><label>Spending categories</label><button class="btn alt" data-act="cats" style="width:100%;text-align:left">${S.cats.map(esc).join(', ')}</button></div>`;
@@ -799,7 +878,7 @@ let FORM = null;
 function openForm(title, fields, onSave, onDelete, extra) {
   FORM = { onSave, onDelete, fields };
   $('#sheet').innerHTML = `<h3>${title}</h3>${extra || ''}` + fields.map(f => {
-    if (f.t === 'check') return `<div class="field check"><input type="checkbox" id="f_${f.k}" ${f.v ? 'checked' : ''}><label for="f_${f.k}">${f.l}</label></div>`;
+    if (f.t === 'check') return `<div class="field check"${f.show ? ` data-show="${f.show}"` : ''}><input type="checkbox" id="f_${f.k}" ${f.v ? 'checked' : ''}><label for="f_${f.k}">${f.l}</label></div>`;
     const show = f.show ? ` data-show="${f.show}"` : '';
     if (f.t === 'select') return `<div class="field"${show}><label>${f.l}</label><select id="f_${f.k}">${f.opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(f.v) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>${f.hint ? `<div class="hint">${f.hint}</div>` : ''}</div>`;
     if (f.t === 'area') return `<div class="field"${show}><label>${f.l}</label><textarea id="f_${f.k}" rows="4">${esc(f.v)}</textarea>${f.hint ? `<div class="hint">${f.hint}</div>` : ''}</div>`;
@@ -831,8 +910,8 @@ function billForm(b) {
     { k: 'day2', l: 'Second day', t: 'num', v: b.day2, show: 'freq=twice' },
     { k: 'every', l: 'Every how many months?', t: 'num', v: b.every, show: 'freq=months' },
     { k: 'start', l: 'Next (or first) date', t: 'date', v: b.start, show: 'freq=weekly|biweekly|months|once' },
-    { k: 'setAside', l: 'Put a bit aside each month (for bills every few months)', t: 'check', v: b.setAside }],
-    v => { if (!v.name) return toast('Give the bill a name'); Object.assign(b, { name: v.name, amt: num(v.amt), freq: v.freq, day: Math.min(31, Math.max(1, num(v.day) || 1)), day2: Math.min(31, Math.max(1, num(v.day2) || 15)), every: Math.max(1, num(v.every) || 3), start: v.start || iso(today()), setAside: v.freq === 'months' && v.setAside }); if (isNew) S.bills.push(b); done(); },
+    { k: 'setAside', l: 'Put a bit aside each month (for bills every few months)', t: 'check', v: b.setAside, show: 'freq=months' }, { k: 'sub', l: 'This is a subscription', t: 'check', v: b.sub }],
+    v => { if (!v.name) return toast('Give the bill a name'); Object.assign(b, { name: v.name, amt: num(v.amt), freq: v.freq, day: Math.min(31, Math.max(1, num(v.day) || 1)), day2: Math.min(31, Math.max(1, num(v.day2) || 15)), every: Math.max(1, num(v.every) || 3), start: v.start || iso(today()), setAside: v.freq === 'months' && v.setAside, sub: v.sub }); if (isNew) S.bills.push(b); done(); },
     isNew ? null : () => { S.bills = S.bills.filter(x => x !== b); done(); });
 }
 function payForm(p) {
@@ -902,7 +981,7 @@ function quick() {
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-v],[data-add],[data-act],[data-form],[data-quick],[data-edit-spend],[data-edit-bill],[data-edit-pay],[data-edit-income],[data-edit-goal],[data-edit-debt],[data-pay-bill],[data-day],[data-mo],[data-plan],[data-theme],[data-mode],[data-dorder],[data-undump],[data-fav],[data-edit-acct]');
+  const b = e.target.closest('[data-v],[data-add],[data-act],[data-form],[data-quick],[data-edit-spend],[data-edit-bill],[data-edit-pay],[data-edit-income],[data-edit-goal],[data-edit-debt],[data-pay-bill],[data-day],[data-mo],[data-plan],[data-theme],[data-mode],[data-dorder],[data-undump],[data-fav],[data-edit-acct],[data-subcancel],[data-settle],[data-edit-shared]');
   if (!b) { if (e.target.id === 'modal') closeForm(); return; }
   const d = b.dataset;
   if (d.v) { U.view = d.v; render(); scrollTo(0, 0); return; }
@@ -910,6 +989,9 @@ document.addEventListener('click', e => {
   if (d.add) return ({ bill: () => billForm(), pay: () => payForm(), goal: () => goalForm(), debt: () => debtForm(), acct: () => acctForm() })[d.add]();
   if (d.quick) { if (addSpend(num(d.quick), OTHER(), '')) { save(); render(); toast(money(+d.quick) + ' logged · tap it to add details'); } return; }
   if (d.fav) { const f = S.favs[+d.fav]; if (f && addSpend(num(f.amt), f.cat, f.note)) { save(); render(); toast(m2(num(f.amt)) + ' logged · ' + (f.note || f.cat)); } return; }
+  if (d.subcancel) { const bl = S.bills.find(x => x.id === d.subcancel); if (bl) { bl.cancel = !bl.cancel; save(); vPlan(); } return; }
+  if (d.settle) { const [f, to, a] = d.settle.split('-'); SP().items.push({ id: uid(), date: iso(today()), kind: 'settle', by: +f, to: +to, amt: +a, what: '' }); done(tx('Settled up 🤝')); return; }
+  if (d.editShared) return sharedForm(SP().items.find(x => x.id === d.editShared));
   if (d.editAcct) return acctForm(S.accounts.find(x => x.id === d.editAcct));
   if (d.editSpend) return spendForm(S.spends.find(x => x.id === d.editSpend));
   if (d.editBill) return billForm(S.bills.find(x => x.id === d.editBill));
@@ -928,6 +1010,10 @@ document.addEventListener('click', e => {
   if (d.act) ACT[d.act](d);
 });
 const ACT = {
+  addSub: () => { billForm(); const c = $('#f_sub'); if (c) c.checked = true; },
+  addShared: () => sharedForm(),
+  people: () => openForm('People', [{ k: 'p', l: 'One per line', t: 'area', v: SP().people.join('\n') }], v => { const p = v.p.split('\n').map(x => x.trim()).filter(Boolean); if (p.length >= 2) SP().people = p; else return toast(tx('Add at least 2 people')); done(); }),
+  challenge: () => { S.challenge = { start: iso(today()) }; save(); vPlan(); },
   balance: () => balanceForm(), favs: () => favForm(), ics: () => icsExport(), xlsx: () => xlsxExport(), how: () => explain(), addSpend: () => spendForm(), addIncome: d => incomeForm(null, d && d.pay),
   dismissAway: () => { S.settings.lastOpen = Date.now(); save(); render(); },
   dump: () => { const el = $('#dumpIn'); if (el.value.trim()) { S.dump.push({ id: uid(), text: el.value.trim(), date: iso(today()) }); save(); vPlan(); setTimeout(() => $('#dumpIn')?.focus(), 0); } },
@@ -971,20 +1057,22 @@ function sample() {
   X.bills = [
     { id: uid(), name: 'Rent', amt: 1100, freq: 'monthly', day: 1, paid: {} },
     { id: uid(), name: 'Phone', amt: 45, freq: 'monthly', day: addDays(t, 2).getDate(), paid: {} },
-    { id: uid(), name: 'Streaming', amt: 15.99, freq: 'monthly', day: addDays(t, 4).getDate(), paid: {} },
+    { id: uid(), name: 'Streaming', amt: 15.99, freq: 'monthly', day: addDays(t, 4).getDate(), paid: {}, sub: true },
     { id: uid(), name: 'Electricity', amt: 85, freq: 'monthly', day: addDays(t, -3).getDate(), paid: {} },
     { id: uid(), name: 'Car insurance', amt: 372, freq: 'months', every: 6, start: D(70), setAside: true, paid: {} },
-    { id: uid(), name: 'Gym', amt: 12, freq: 'weekly', start: D(1), paid: {} }];
+    { id: uid(), name: 'Gym', amt: 12, freq: 'weekly', start: D(1), paid: {}, sub: true, cancel: true }];
   X.bills[0].paid[iso(new Date(t.getFullYear(), t.getMonth(), 1))] = ts - 1000;
   const sp = [[-2, 42.3, 'Groceries', 'Weekly shop'], [-2, 6.5, 'Eating out', 'Coffee'], [-1, 18, 'Transport', 'Gas'], [-1, 24, 'Fun', 'Cinema'], [0, 4.8, 'Eating out', 'Coffee'], [0, 31.2, 'Groceries', '']];
   X.spends = sp.map(([d, a, c, n]) => ({ id: uid(), ts: ts + 1000 + d * 10 + 5e6 + (d + 3) * 1e6, date: D(d), amt: a, cat: c, note: n, ex: true }));
-  for (let i = 3; i < 26; i++) { const c = X.cats[i % 6]; X.spends.push({ id: uid(), ts: ts - 1e7 - i, date: D(-i), amt: Math.round((8 + (i * 13) % 60) * 100) / 100, cat: c, note: '', ex: true }); }
+  for (let i = 3; i < 26; i++) { if (i % 3 === 0 || i === 4) continue; const c = X.cats[i % 6]; X.spends.push({ id: uid(), ts: ts - 1e7 - i, date: D(-i), amt: Math.round((8 + (i * 13) % 60) * 100) / 100, cat: c, note: '', ex: true }); }
   X.income = [{ id: uid(), ts: ts - 2e7, date: D(-8), amt: 1650, note: 'Paycheck' }];
   X.envelopes = { Groceries: 400, 'Eating out': 120, Fun: 100, Transport: 150 };
   X.debts = [{ id: uid(), name: 'Credit card', bal: 1240, rate: 22.9, min: 45, pays: [] }, { id: uid(), name: 'Car loan', bal: 6800, rate: 6.5, min: 210, pays: [] }];
   X.goals = [{ id: uid(), name: 'Emergency fund', target: 1000, saved: 420 }, { id: uid(), name: 'Holiday', target: 800, saved: 150 }];
   X.accounts = [{ id: uid(), name: 'Wallet', type: 'cash', bal: 60 }, { id: uid(), name: 'Emergency savings', type: 'savings', bal: 420 }];
   X.favs = [{ amt: 4.8, cat: 'Eating out', note: 'Coffee' }, { amt: 18, cat: 'Transport', note: 'Gas' }];
+  X.split = { people: ['Sam', 'Alex'], items: [{ id: uid(), date: D(-5), what: 'Groceries', amt: 86, by: 0, kind: 'exp' }, { id: uid(), date: D(-3), what: 'Dinner out', amt: 54, by: 1, kind: 'exp' }, { id: uid(), date: D(-1), what: 'Electricity', amt: 85, by: 0, kind: 'exp' }] };
+  X.challenge = { start: D(-9) };
   X.dump = [{ id: uid(), text: 'Cancel the free trial before Friday', date: D(-1) }];
   return X;
 }
