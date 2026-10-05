@@ -189,17 +189,244 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const diffDays = (a, b) => Math.round((a - b) / 864e5);
 const lastDay = (y, m) => new Date(y, m + 1, 0).getDate();
 const dom = (y, m, d) => { const x = new Date(y, m, 1); return new Date(x.getFullYear(), x.getMonth(), Math.min(d, lastDay(x.getFullYear(), x.getMonth()))); };
-const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const fd = d => DOW[d.getDay()] + ' ' + MON[d.getMonth()] + ' ' + d.getDate();
 const CURRENCIES = [['$','US dollar'],['€','Euro'],['£','Pound'],['C$','Canadian dollar'],['A$','Australian dollar'],['CHF','Swiss franc'],['¥','Yen'],['₹','Rupee'],['kr','Krona / Krone'],['zł','Złoty'],['R$','Real'],['MX$','Mexican peso'],['₩','Won']];
 const COLORS = ['var(--lilac)','var(--sky)','var(--mint)','var(--yellow)','var(--peach)','var(--pink)'];
 const FREQ = {monthly:'Once a month', twice:'Two days a month', biweekly:'Every 2 weeks', weekly:'Every week', months:'Every few months', once:'Just once'};
 const PFREQ = {monthly:'Monthly', twice:'Twice a month', biweekly:'Every 2 weeks', weekly:'Weekly'};
 
-function fresh() {
-  return { v: 1, settings: { name: '', title: 'My calm money plan', currency: '$', theme: 'soft', mode: 'simple', balance: null, balanceTs: 0, cushion: 0, lastOpen: Date.now(), example: false },
-    cats: ['Groceries', 'Eating out', 'Transport', 'Fun', 'Home', 'Health', 'Kids', 'Other'],
+/* ---------- languages: English is the source, other languages are swapped in on screen ---------- */
+const LANGS = [['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch']];
+const LOC = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' }, LI = { fr: 0, es: 1, de: 2 };
+const detectLang = () => { const l = (navigator.language || 'en').slice(0, 2).toLowerCase(); return LOC[l] ? l : 'en'; };
+const lang = () => (typeof S !== 'undefined' && S && S.settings && S.settings.lang) || detectLang();
+const loc = () => LOC[lang()];
+const fd = d => d.toLocaleDateString(loc(), { weekday: 'short', month: 'short', day: 'numeric' });
+const monShort = d => d.toLocaleDateString(loc(), { month: 'short' });
+const I18N = {
+  // header, nav, banners
+  'My calm money plan': ['Mon budget zen', 'Mi plan de dinero tranquilo', 'Mein entspannter Geldplan'],
+  'Focus mode': ['Mode focus', 'Modo enfoque', 'Fokusmodus'],
+  'Today': ["Aujourd'hui", 'Hoy', 'Heute'], 'Bills': ['Factures', 'Facturas', 'Rechnungen'], 'Month': ['Mois', 'Mes', 'Monat'], 'Plan': ['Plan', 'Plan', 'Plan'], 'Settings': ['Réglages', 'Ajustes', 'Einstellungen'],
+  'FREE DEMO': ['DÉMO GRATUITE', 'DEMO GRATIS', 'GRATIS-DEMO'],
+  'These are example numbers.': ["Ce sont des chiffres d'exemple.", 'Son números de ejemplo.', 'Das sind Beispielzahlen.'],
+  "Look around, tap anything. When you're ready, start your own plan in 4 small steps.": ['Explore, touche ce que tu veux. Quand tu es prêt, crée ton plan en 4 petites étapes.', 'Mira, toca lo que quieras. Cuando quieras, crea tu plan en 4 pasos.', 'Schau dich um, tippe überall. Wenn du so weit bist, starte deinen Plan in 4 kleinen Schritten.'],
+  'Start mine': ['Créer le mien', 'Crear el mío', 'Meinen starten'],
+  '👋 While you were away': ['👋 Pendant ton absence', '👋 Mientras no estabas', '👋 Während du weg warst'],
+  'Not now': ['Pas maintenant', 'Ahora no', 'Nicht jetzt'], 'Balance': ['Solde', 'Saldo', 'Kontostand'], 'Money in': ['Rentrées', 'Ingresos', 'Einnahmen'],
+  // today
+  'Type "12.50 coffee" or a screen name': ['Tape « 12.50 café » ou le nom d\'un écran', 'Escribe "12.50 café" o el nombre de una pantalla', 'Tippe „12.50 Kaffee" oder einen Bildschirmnamen'],
+  'Add': ['Ajouter', 'Añadir', 'Hinzufügen'],
+  'Spent today': ["Dépensé aujourd'hui", 'Gastado hoy', 'Heute ausgegeben'],
+  'Run to payday': ["Jusqu'à la paie", 'Hasta el cobro', 'Bis zum Zahltag'],
+  'Must-pays before payday': ['À payer avant la paie', 'Pagos antes del cobro', 'Pflichtzahlungen vor dem Zahltag'],
+  'Safe to spend today': ["Dépensable aujourd'hui", 'Puedes gastar hoy', 'Heute sicher ausgeben'],
+  'Type your bank balance to see your number': ['Tape ton solde bancaire pour voir ton chiffre', 'Escribe tu saldo para ver tu número', 'Gib deinen Kontostand ein, um deine Zahl zu sehen'],
+  'Add my balance': ['Ajouter mon solde', 'Añadir mi saldo', 'Kontostand eingeben'],
+  'A bit over today. Tomorrow resets.': ["Un peu au-dessus aujourd'hui. Demain, on repart à zéro.", 'Un poco pasado hoy. Mañana se reinicia.', 'Heute etwas drüber. Morgen geht es neu los.'],
+  'You can spend this today and still cover every bill.': ["Tu peux dépenser ça aujourd'hui et payer toutes tes factures.", 'Puedes gastar esto hoy y cubrir todas tus facturas.', 'Das kannst du heute ausgeben und trotzdem jede Rechnung zahlen.'],
+  'How is this worked out?': ['Comment est-ce calculé ?', '¿Cómo se calcula?', 'Wie wird das berechnet?'],
+  'Right now · one thing only': ['Maintenant · une seule chose', 'Ahora · solo una cosa', 'Jetzt · nur eine Sache'],
+  '+ Details': ['+ Détails', '+ Detalles', '+ Details'],
+  'Nothing yet today. Nice.': ["Rien encore aujourd'hui. Bien joué.", 'Nada todavía hoy. Bien.', 'Heute noch nichts. Schön.'],
+  'No bills before payday. 🌿': ['Aucune facture avant la paie. 🌿', 'Sin facturas antes del cobro. 🌿', 'Keine Rechnungen vor dem Zahltag. 🌿'],
+  'Type your bank balance': ['Tape ton solde bancaire', 'Escribe tu saldo bancario', 'Gib deinen Kontostand ein'],
+  "Copy it from your banking app. One number, that's all.": ["Recopie-le depuis ton app bancaire. Un seul chiffre, c'est tout.", 'Cópialo de tu app del banco. Un solo número.', 'Übernimm ihn aus deiner Banking-App. Eine Zahl, mehr nicht.'],
+  'Yes, done': ["Oui, c'est fait", 'Sí, hecho', 'Ja, erledigt'], 'Done': ['Fait', 'Hecho', 'Erledigt'],
+  'Log it when it lands': ["Note-la quand elle arrive", 'Anótalo cuando llegue', 'Trag es ein, wenn es ankommt'], 'It landed': ['Elle est arrivée', 'Ha llegado', 'Ist da'],
+  'When is your next payday?': ['Quand tombe ta prochaine paie ?', '¿Cuándo es tu próximo cobro?', 'Wann ist dein nächster Zahltag?'],
+  'So the planner knows how many days to plan for': ['Pour savoir sur combien de jours planifier', 'Para saber cuántos días planificar', 'Damit der Planer weiß, für wie viele Tage er plant'],
+  "Log today's spending": ['Note tes dépenses du jour', 'Anota los gastos de hoy', 'Trag die heutigen Ausgaben ein'],
+  'Type it in the box below, it takes 3 seconds': ['Tape-les dans la case ci-dessous, 3 secondes suffisent', 'Escríbelo abajo, son 3 segundos', 'Tippe es unten ein, dauert 3 Sekunden'],
+  'All done for now': ['Tout est fait pour le moment', 'Todo listo por ahora', 'Fürs Erste alles erledigt'],
+  'Come back when you spend something': ['Reviens quand tu dépenses quelque chose', 'Vuelve cuando gastes algo', 'Komm wieder, wenn du etwas ausgibst'],
+  'Add your balance to see your forecast.': ['Ajoute ton solde pour voir la prévision.', 'Añade tu saldo para ver la previsión.', 'Gib deinen Kontostand ein, um die Prognose zu sehen.'],
+  'If you spend your daily number, you reach payday with about': ['Si tu dépenses ton chiffre du jour, tu arrives à la paie avec environ', 'Si gastas tu número diario, llegas al cobro con unos', 'Wenn du deine Tageszahl ausgibst, erreichst du den Zahltag mit etwa'],
+  'left plus your cushion.': ['restants, plus ton coussin.', 'de sobra, más tu colchón.', 'übrig plus deinem Puffer.'],
+  // bills
+  'Still to go out this month': ['Encore à sortir ce mois-ci', 'Aún por salir este mes', 'Geht diesen Monat noch raus'],
+  'Your bills': ['Tes factures', 'Tus facturas', 'Deine Rechnungen'], '+ Bill': ['+ Facture', '+ Factura', '+ Rechnung'],
+  'from what you set aside': ['avec ce que tu as mis de côté', 'de lo que apartaste', 'aus dem Zurückgelegten'],
+  'No bills this month.': ['Aucune facture ce mois-ci.', 'Sin facturas este mes.', 'Keine Rechnungen diesen Monat.'],
+  'Add the bills you must pay: rent, phone, subscriptions…': ['Ajoute les factures à payer : loyer, téléphone, abonnements…', 'Añade las facturas: alquiler, teléfono, suscripciones…', 'Füge Pflichtrechnungen hinzu: Miete, Handy, Abos…'],
+  'Once a month': ['Une fois par mois', 'Una vez al mes', 'Einmal im Monat'], 'Two days a month': ['Deux jours par mois', 'Dos días al mes', 'Zwei Tage im Monat'],
+  'Every 2 weeks': ['Toutes les 2 semaines', 'Cada 2 semanas', 'Alle 2 Wochen'], 'Every week': ['Chaque semaine', 'Cada semana', 'Jede Woche'],
+  'Every few months': ['Tous les quelques mois', 'Cada pocos meses', 'Alle paar Monate'], 'Just once': ['Une seule fois', 'Solo una vez', 'Nur einmal'],
+  'Monthly': ['Mensuel', 'Mensual', 'Monatlich'], 'Twice a month': ['Deux fois par mois', 'Dos veces al mes', 'Zweimal im Monat'], 'Weekly': ['Hebdomadaire', 'Semanal', 'Wöchentlich'],
+  // month
+  'Month summary': ['Résumé du mois', 'Resumen del mes', 'Monatsübersicht'], 'Notes for this month': ['Notes du mois', 'Notas del mes', 'Notizen zum Monat'],
+  'Anything to remember about this month': ['Quelque chose à retenir ce mois-ci', 'Algo que recordar este mes', 'Etwas, das du dir merken willst'],
+  '💸 Payday': ['💸 Paie', '💸 Cobro', '💸 Zahltag'], 'Bill': ['Facture', 'Factura', 'Rechnung'],
+  'Nothing on this day.': ['Rien ce jour-là.', 'Nada este día.', 'An diesem Tag nichts.'],
+  'Came in': ['Rentré', 'Entró', 'Rein'], 'Went out': ['Sorti', 'Salió', 'Raus'], 'Kept': ['Gardé', 'Ahorrado', 'Behalten'],
+  // plan
+  'Savings': ['Épargne', 'Ahorro', 'Sparen'], 'Envelopes': ['Enveloppes', 'Sobres', 'Umschläge'], 'Debt': ['Dettes', 'Deudas', 'Schulden'],
+  'Milestones': ['Étapes', 'Logros', 'Meilensteine'], 'Brain dump': ['Vide-tête', 'Descarga mental', 'Kopf frei'],
+  'Paychecks': ['Salaires', 'Sueldos', 'Gehälter'], '+ Paycheck': ['+ Salaire', '+ Sueldo', '+ Gehalt'],
+  'paid early on weekends': ['versé plus tôt le week-end', 'se paga antes en fin de semana', 'am Wochenende früher gezahlt'],
+  'Add your paycheck so the planner can count down to it.': ['Ajoute ton salaire pour le compte à rebours.', 'Añade tu sueldo para la cuenta atrás.', 'Füge dein Gehalt hinzu, damit der Planer runterzählt.'],
+  'Next payday:': ['Prochaine paie :', 'Próximo cobro:', 'Nächster Zahltag:'],
+  'Money that came in': ["L'argent rentré", 'Dinero que entró', 'Eingegangenes Geld'], '+ Money in': ['+ Rentrée', '+ Ingreso', '+ Einnahme'],
+  'Paychecks, refunds, gifts, side income…': ['Salaires, remboursements, cadeaux, petits revenus…', 'Sueldos, reembolsos, regalos, extras…', 'Gehalt, Erstattungen, Geschenke, Nebeneinkommen…'],
+  'Savings goals': ["Objectifs d'épargne", 'Metas de ahorro', 'Sparziele'], '+ Goal': ['+ Objectif', '+ Meta', '+ Ziel'],
+  'A holiday, an emergency fund, a new laptop…': ["Des vacances, un fonds d'urgence, un nouvel ordi…", 'Unas vacaciones, un fondo de emergencia, un portátil…', 'Urlaub, Notgroschen, ein neuer Laptop…'],
+  'Tap a goal to add money to it.': ['Touche un objectif pour y ajouter de l\'argent.', 'Toca una meta para añadir dinero.', 'Tippe auf ein Ziel, um Geld hinzuzufügen.'],
+  'Cushion': ['Coussin', 'Colchón', 'Puffer'],
+  'An amount the planner never counts as spendable. Change it in Settings.': ['Un montant jamais compté comme dépensable. Modifiable dans Réglages.', 'Una cantidad que nunca cuenta como gastable. Cámbiala en Ajustes.', 'Ein Betrag, der nie als ausgebbar zählt. Änderbar in den Einstellungen.'],
+  'Spending envelopes': ['Enveloppes de dépenses', 'Sobres de gasto', 'Ausgaben-Umschläge'], 'Edit limits': ['Modifier les limites', 'Editar límites', 'Limits bearbeiten'],
+  'No limit set': ['Pas de limite', 'Sin límite', 'Kein Limit'],
+  'Set gentle limits per category. Going over just shows a soft colour.': ['Fixe des limites douces par catégorie. Dépasser affiche juste une couleur douce.', 'Pon límites suaves por categoría. Pasarte solo muestra un color suave.', 'Setze sanfte Limits pro Kategorie. Drüber zeigt nur eine sanfte Farbe.'],
+  '+ Debt': ['+ Dette', '+ Deuda', '+ Schuld'], 'Highest rate first': ['Taux le plus élevé', 'Mayor interés primero', 'Höchster Zins zuerst'], 'Smallest first': ['Plus petite d\'abord', 'La más pequeña primero', 'Kleinste zuerst'],
+  'Track what you owe and choose your payoff order.': ['Suis ce que tu dois et choisis ton ordre de remboursement.', 'Controla lo que debes y elige el orden de pago.', 'Behalte Schulden im Blick und wähle die Tilgungsreihenfolge.'],
+  'Total owed:': ['Total dû :', 'Total adeudado:', 'Gesamtschuld:'],
+  '. Put any extra toward 🎯. Tap a debt to record a payment.': ['. Mets le surplus sur 🎯. Touche une dette pour noter un paiement.', '. Pon lo extra en 🎯. Toca una deuda para anotar un pago.', '. Extra-Geld auf 🎯. Tippe auf eine Schuld, um eine Zahlung einzutragen.'],
+  'paid off 🎉': ['remboursée 🎉', 'pagada 🎉', 'abbezahlt 🎉'], 'add a monthly payment': ['ajoute un paiement mensuel', 'añade un pago mensual', 'Monatsrate eintragen'],
+  "minimum doesn't cover interest": ['le minimum ne couvre pas les intérêts', 'el mínimo no cubre los intereses', 'Mindestrate deckt die Zinsen nicht'],
+  'No streaks, nothing that can be broken.': ['Pas de séries, rien à casser.', 'Sin rachas, nada que romper.', 'Keine Serien, nichts kann reißen.'],
+  'First spend logged': ['Première dépense notée', 'Primer gasto anotado', 'Erste Ausgabe eingetragen'], 'The hardest one': ['La plus dure', 'El más difícil', 'Die schwerste'],
+  'Balance added': ['Solde ajouté', 'Saldo añadido', 'Kontostand eingetragen'], 'Your real number is in': ['Ton vrai chiffre est là', 'Tu número real está dentro', 'Deine echte Zahl ist drin'],
+  'All bills in': ['Toutes les factures', 'Todas las facturas', 'Alle Rechnungen drin'], 'At least 3 bills added': ['Au moins 3 factures ajoutées', 'Al menos 3 facturas', 'Mindestens 3 Rechnungen'],
+  'First month in the black': ['Premier mois dans le vert', 'Primer mes en positivo', 'Erster Monat im Plus'], 'More came in than went out': ['Plus de rentrées que de sorties', 'Entró más de lo que salió', 'Mehr rein als raus'],
+  'A savings goal reached': ['Un objectif atteint', 'Una meta alcanzada', 'Ein Sparziel erreicht'], 'You did that': ["C'est toi qui l'as fait", 'Lo lograste', 'Das warst du'],
+  'A debt paid off': ['Une dette remboursée', 'Una deuda pagada', 'Eine Schuld getilgt'], 'Gone for good': ['Partie pour de bon', 'Adiós para siempre', 'Für immer weg'],
+  '20 spends logged': ['20 dépenses notées', '20 gastos anotados', '20 Ausgaben eingetragen'], "It's becoming a habit": ["Ça devient une habitude", 'Se vuelve hábito', 'Es wird zur Gewohnheit'],
+  'No amount, no category, no date. Type the thing in your head, press Enter, get on with your day.': ['Pas de montant, pas de catégorie, pas de date. Tape ce que tu as en tête, Entrée, et continue ta journée.', 'Sin cantidad, sin categoría, sin fecha. Escribe lo que tienes en la cabeza, pulsa Enter y sigue.', 'Kein Betrag, keine Kategorie, kein Datum. Tippe, was dir im Kopf ist, Enter, weiter geht der Tag.'],
+  'Cancel the gym? Ask about the refund…': ['Résilier la salle ? Demander le remboursement…', '¿Cancelar el gimnasio? Preguntar por el reembolso…', 'Fitnessstudio kündigen? Nach Erstattung fragen…'],
+  // settings
+  'Language': ['Langue', 'Idioma', 'Sprache'], 'Your name': ['Ton prénom', 'Tu nombre', 'Dein Name'], 'Optional': ['Facultatif', 'Opcional', 'Optional'],
+  'Planner title': ['Titre du planner', 'Título del plan', 'Titel des Planers'], 'Currency': ['Monnaie', 'Moneda', 'Währung'],
+  'Bank balance': ['Solde bancaire', 'Saldo bancario', 'Kontostand'], 'update': ['modifier', 'actualizar', 'ändern'],
+  'Cushion (never counted as spendable)': ['Coussin (jamais compté comme dépensable)', 'Colchón (nunca cuenta como gastable)', 'Puffer (zählt nie als ausgebbar)'],
+  'Theme': ['Thème', 'Tema', 'Design'], '☁️ Soft Spectrum': ['☁️ Doux', '☁️ Suave', '☁️ Sanft'], '🌙 Midnight': ['🌙 Nuit', '🌙 Noche', '🌙 Nacht'],
+  'How much to show': ['Quoi afficher', 'Cuánto mostrar', 'Wie viel anzeigen'], 'Simple': ['Simple', 'Simple', 'Einfach'], 'Everything': ['Tout', 'Todo', 'Alles'],
+  'Simple hides envelopes, debt and milestones. Nothing is ever deleted.': ['Simple masque enveloppes, dettes et étapes. Rien n\'est supprimé.', 'Simple oculta sobres, deudas y logros. No se borra nada.', 'Einfach blendet Umschläge, Schulden und Meilensteine aus. Nichts wird gelöscht.'],
+  'Spending categories': ['Catégories de dépenses', 'Categorías de gasto', 'Ausgabenkategorien'],
+  'Your data': ['Tes données', 'Tus datos', 'Deine Daten'],
+  'Everything stays on this device. Download a backup now and then.': ['Tout reste sur cet appareil. Télécharge une sauvegarde de temps en temps.', 'Todo se queda en este dispositivo. Descarga una copia de vez en cuando.', 'Alles bleibt auf diesem Gerät. Lade ab und zu ein Backup herunter.'],
+  'Download a backup': ['Télécharger une sauvegarde', 'Descargar copia', 'Backup herunterladen'], 'Restore a backup': ['Restaurer une sauvegarde', 'Restaurar copia', 'Backup wiederherstellen'],
+  'Export spending (CSV)': ['Exporter les dépenses (CSV)', 'Exportar gastos (CSV)', 'Ausgaben exportieren (CSV)'], 'Show example numbers': ["Voir l'exemple", 'Ver ejemplo', 'Beispiel anzeigen'], 'Start fresh': ['Repartir de zéro', 'Empezar de cero', 'Neu anfangen'],
+  'Use it like an app': ["L'utiliser comme une app", 'Úsala como una app', 'Wie eine App nutzen'],
+  'open in Safari › Share › Add to Home Screen.': ["ouvre dans Safari › Partager › Sur l'écran d'accueil.", 'ábrela en Safari › Compartir › Añadir a pantalla de inicio.', 'in Safari öffnen › Teilen › Zum Home-Bildschirm.'],
+  'Chrome › menu ⋮ › Add to Home screen.': ["Chrome › menu ⋮ › Ajouter à l'écran d'accueil.", 'Chrome › menú ⋮ › Añadir a pantalla de inicio.', 'Chrome › Menü ⋮ › Zum Startbildschirm hinzufügen.'],
+  'Computer:': ['Ordinateur :', 'Ordenador:', 'Computer:'],
+  'Chrome or Edge › install icon in the address bar.': ["Chrome ou Edge › icône d'installation dans la barre d'adresse.", 'Chrome o Edge › icono de instalar en la barra de direcciones.', 'Chrome oder Edge › Installieren-Symbol in der Adressleiste.'],
+  'It then opens offline, with no account and no subscription.': ["Elle s'ouvre ensuite hors ligne, sans compte ni abonnement.", 'Luego abre sin conexión, sin cuenta ni suscripción.', 'Dann öffnet sie offline, ohne Konto und ohne Abo.'],
+  'not a financial product': ['pas un produit financier', 'no es un producto financiero', 'kein Finanzprodukt'],
+  'US dollar': ['Dollar US', 'Dólar EE. UU.', 'US-Dollar'], 'Euro': ['Euro', 'Euro', 'Euro'], 'Pound': ['Livre', 'Libra', 'Pfund'], 'Canadian dollar': ['Dollar canadien', 'Dólar canadiense', 'Kanadischer Dollar'],
+  'Australian dollar': ['Dollar australien', 'Dólar australiano', 'Australischer Dollar'], 'Swiss franc': ['Franc suisse', 'Franco suizo', 'Schweizer Franken'], 'Yen': ['Yen', 'Yen', 'Yen'],
+  'Rupee': ['Roupie', 'Rupia', 'Rupie'], 'Krona / Krone': ['Couronne', 'Corona', 'Krone'], 'Mexican peso': ['Peso mexicain', 'Peso mexicano', 'Mexikanischer Peso'],
+  // forms
+  'Delete': ['Supprimer', 'Eliminar', 'Löschen'], 'Cancel': ['Annuler', 'Cancelar', 'Abbrechen'], 'Save': ['Enregistrer', 'Guardar', 'Speichern'], 'Skip': ['Passer', 'Saltar', 'Überspringen'], 'Got it': ["C'est compris", 'Entendido', 'Verstanden'],
+  'Log a spend': ['Noter une dépense', 'Anotar un gasto', 'Ausgabe eintragen'], 'Edit spend': ['Modifier la dépense', 'Editar gasto', 'Ausgabe bearbeiten'],
+  'Amount': ['Montant', 'Cantidad', 'Betrag'], 'Category': ['Catégorie', 'Categoría', 'Kategorie'], 'Note (optional)': ['Note (facultatif)', 'Nota (opcional)', 'Notiz (optional)'], 'Date': ['Date', 'Fecha', 'Datum'],
+  'Type an amount': ['Tape un montant', 'Escribe una cantidad', 'Gib einen Betrag ein'], 'Demo limit reached: your numbers stay readable': ['Limite de la démo atteinte : tes chiffres restent visibles', 'Límite de la demo alcanzado: tus números siguen visibles', 'Demo-Limit erreicht: deine Zahlen bleiben lesbar'],
+  'Add a bill': ['Ajouter une facture', 'Añadir factura', 'Rechnung hinzufügen'], 'Edit bill': ['Modifier la facture', 'Editar factura', 'Rechnung bearbeiten'],
+  'Rent, phone, Netflix…': ['Loyer, téléphone, Netflix…', 'Alquiler, teléfono, Netflix…', 'Miete, Handy, Netflix…'],
+  'How often does it come round?': ['À quelle fréquence ?', '¿Cada cuánto llega?', 'Wie oft kommt sie?'], 'Day of the month': ['Jour du mois', 'Día del mes', 'Tag im Monat'],
+  'Type 31 for the last day of the month': ['Tape 31 pour le dernier jour du mois', 'Escribe 31 para el último día del mes', 'Gib 31 für den letzten Tag des Monats ein'],
+  'Second day': ['Deuxième jour', 'Segundo día', 'Zweiter Tag'], 'Every how many months?': ['Tous les combien de mois ?', '¿Cada cuántos meses?', 'Alle wie viele Monate?'],
+  'Next (or first) date': ['Prochaine (ou première) date', 'Próxima (o primera) fecha', 'Nächstes (oder erstes) Datum'],
+  'Put a bit aside each month (for bills every few months)': ['Mettre un peu de côté chaque mois (factures espacées)', 'Apartar un poco cada mes (facturas cada pocos meses)', 'Jeden Monat etwas zurücklegen (für seltene Rechnungen)'],
+  'Give the bill a name': ['Donne un nom à la facture', 'Pon nombre a la factura', 'Gib der Rechnung einen Namen'],
+  'Add a paycheck': ['Ajouter un salaire', 'Añadir sueldo', 'Gehalt hinzufügen'], 'Edit paycheck': ['Modifier le salaire', 'Editar sueldo', 'Gehalt bearbeiten'], 'Name': ['Nom', 'Nombre', 'Name'],
+  'Usual amount (what reaches your account)': ['Montant habituel (ce qui arrive sur ton compte)', 'Cantidad habitual (lo que llega a tu cuenta)', 'Üblicher Betrag (was auf dem Konto ankommt)'],
+  'How often?': ['À quelle fréquence ?', '¿Cada cuánto?', 'Wie oft?'], 'Next payday': ['Prochaine paie', 'Próximo cobro', 'Nächster Zahltag'],
+  'Paid early when payday is a weekend': ['Versé plus tôt si la paie tombe un week-end', 'Se paga antes si cae en fin de semana', 'Früher gezahlt, wenn der Zahltag aufs Wochenende fällt'],
+  'Paycheck': ['Salaire', 'Sueldo', 'Gehalt'], 'Edit money in': ['Modifier la rentrée', 'Editar ingreso', 'Einnahme bearbeiten'], 'What was it?': ["C'était quoi ?", '¿Qué era?', 'Was war es?'],
+  'Paycheck, refund, gift…': ['Salaire, remboursement, cadeau…', 'Sueldo, reembolso, regalo…', 'Gehalt, Erstattung, Geschenk…'],
+  'Your bank balance': ['Ton solde bancaire', 'Tu saldo bancario', 'Dein Kontostand'], 'What your banking app shows right now': ['Ce que ton app bancaire affiche maintenant', 'Lo que muestra tu app del banco ahora', 'Was deine Banking-App gerade zeigt'],
+  'Spending, money in and paid bills update it from here. Re-type it whenever you like.': ['Les dépenses, rentrées et factures payées le mettent à jour. Retape-le quand tu veux.', 'Gastos, ingresos y facturas pagadas lo actualizan. Vuelve a escribirlo cuando quieras.', 'Ausgaben, Einnahmen und bezahlte Rechnungen aktualisieren ihn. Gib ihn neu ein, wann du willst.'],
+  'Balance updated': ['Solde mis à jour', 'Saldo actualizado', 'Kontostand aktualisiert'],
+  'New savings goal': ["Nouvel objectif d'épargne", 'Nueva meta de ahorro', 'Neues Sparziel'], 'Goal': ['Objectif', 'Meta', 'Ziel'], 'Target': ['Cible', 'Objetivo', 'Zielbetrag'], 'Saved so far': ['Déjà épargné', 'Ahorrado hasta ahora', 'Bisher gespart'],
+  'Add money now (moves it out of your spending money)': ["Ajouter de l'argent (le retire de ton argent à dépenser)", 'Añadir dinero ahora (sale de tu dinero para gastar)', 'Jetzt Geld hinzufügen (geht vom Ausgabegeld ab)'],
+  'Add a debt': ['Ajouter une dette', 'Añadir deuda', 'Schuld hinzufügen'], 'Credit card, car loan…': ['Carte de crédit, prêt auto…', 'Tarjeta de crédito, préstamo del coche…', 'Kreditkarte, Autokredit…'],
+  'Balance owed': ['Montant dû', 'Saldo adeudado', 'Offener Betrag'], 'Interest rate (% per year)': ["Taux d'intérêt (% par an)", 'Interés (% anual)', 'Zinssatz (% pro Jahr)'],
+  'Minimum payment per month': ['Paiement minimum par mois', 'Pago mínimo al mes', 'Mindestrate pro Monat'], 'Record a payment now': ['Noter un paiement maintenant', 'Anotar un pago ahora', 'Jetzt Zahlung eintragen'], 'Payment recorded': ['Paiement noté', 'Pago anotado', 'Zahlung eingetragen'],
+  'In your account now': ['Sur ton compte maintenant', 'En tu cuenta ahora', 'Jetzt auf deinem Konto'], 'Your cushion': ['Ton coussin', 'Tu colchón', 'Dein Puffer'],
+  'Free until payday': ["Libre jusqu'à la paie", 'Libre hasta el cobro', 'Frei bis zum Zahltag'], 'Per day': ['Par jour', 'Por día', 'Pro Tag'],
+  '(counting what you spent today)': ["(en comptant ce que tu as dépensé aujourd'hui)", '(contando lo que gastaste hoy)', '(inklusive heutiger Ausgaben)'],
+  'tap it to add details': ['touche-la pour ajouter des détails', 'tócalo para añadir detalles', 'tippe für Details'],
+  'Start with an amount, like "12 coffee"': ['Commence par un montant, ex. « 12 café »', 'Empieza con una cantidad, como "12 café"', 'Beginne mit einem Betrag, z. B. „12 Kaffee"'],
+  'Focus mode: just today': ["Mode focus : juste aujourd'hui", 'Modo enfoque: solo hoy', 'Fokusmodus: nur heute'], 'Everything is back': ['Tout est revenu', 'Todo ha vuelto', 'Alles ist zurück'],
+  'Backup restored': ['Sauvegarde restaurée', 'Copia restaurada', 'Backup wiederhergestellt'], "All set. That's your number.": ["C'est prêt. Voilà ton chiffre.", 'Listo. Ese es tu número.', 'Fertig. Das ist deine Zahl.'],
+  'Monthly limits': ['Limites mensuelles', 'Límites mensuales', 'Monatslimits'], 'One per line': ['Une par ligne', 'Una por línea', 'Eine pro Zeile'],
+  'Step 1 of 4 · Make it yours': ['Étape 1 sur 4 · Personnalise', 'Paso 1 de 4 · Hazlo tuyo', 'Schritt 1 von 4 · Mach es zu deinem'], 'Your name (optional)': ['Ton prénom (facultatif)', 'Tu nombre (opcional)', 'Dein Name (optional)'],
+  'Step 2 of 4 · Your balance': ['Étape 2 sur 4 · Ton solde', 'Paso 2 de 4 · Tu saldo', 'Schritt 2 von 4 · Dein Kontostand'],
+  'What is in your spending account right now?': ["Combien as-tu sur ton compte courant maintenant ?", '¿Cuánto hay en tu cuenta ahora?', 'Was ist gerade auf deinem Girokonto?'],
+  'Copy it from your banking app.': ['Recopie-le depuis ton app bancaire.', 'Cópialo de tu app del banco.', 'Übernimm ihn aus deiner Banking-App.'],
+  'Step 3 of 4 · Your next paycheck': ['Étape 3 sur 4 · Ta prochaine paie', 'Paso 3 de 4 · Tu próximo sueldo', 'Schritt 3 von 4 · Dein nächstes Gehalt'],
+  'Step 4 of 4 · Your biggest bill': ['Étape 4 sur 4 · Ta plus grosse facture', 'Paso 4 de 4 · Tu factura más grande', 'Schritt 4 von 4 · Deine größte Rechnung'],
+  'Delete this?': ['Supprimer ?', '¿Eliminar?', 'Löschen?'],
+  'Show the example numbers? This replaces what is on screen (download a backup first if needed).': ["Afficher l'exemple ? Cela remplace ce qui est à l'écran (fais une sauvegarde avant si besoin).", '¿Mostrar el ejemplo? Reemplaza lo que hay en pantalla (descarga una copia antes si hace falta).', 'Beispiel anzeigen? Das ersetzt alles auf dem Bildschirm (vorher Backup laden, falls nötig).'],
+  'Start an empty planner? Everything on this device will be cleared.': ['Repartir de zéro ? Tout sera effacé sur cet appareil.', '¿Empezar de cero? Se borrará todo en este dispositivo.', 'Leeren Planer starten? Alles auf diesem Gerät wird gelöscht.'],
+  'Replace everything with this backup?': ['Tout remplacer par cette sauvegarde ?', '¿Reemplazar todo con esta copia?', 'Alles durch dieses Backup ersetzen?'],
+  'That file is not a Calm Budget backup.': ["Ce fichier n'est pas une sauvegarde Calm Budget.", 'Ese archivo no es una copia de Calm Budget.', 'Diese Datei ist kein Calm-Budget-Backup.'],
+  // example data + default categories
+  'Groceries': ['Courses', 'Supermercado', 'Lebensmittel'], 'Eating out': ['Restos', 'Comer fuera', 'Auswärts essen'], 'Transport': ['Transport', 'Transporte', 'Verkehr'], 'Fun': ['Loisirs', 'Ocio', 'Freizeit'],
+  'Home': ['Maison', 'Casa', 'Zuhause'], 'Health': ['Santé', 'Salud', 'Gesundheit'], 'Kids': ['Enfants', 'Niños', 'Kinder'], 'Other': ['Autre', 'Otros', 'Sonstiges'],
+  'Rent': ['Loyer', 'Alquiler', 'Miete'], 'Phone': ['Téléphone', 'Teléfono', 'Handy'], 'Electricity': ['Électricité', 'Luz', 'Strom'], 'Car insurance': ['Assurance auto', 'Seguro del coche', 'Kfz-Versicherung'], 'Gym': ['Salle de sport', 'Gimnasio', 'Fitnessstudio'],
+  'Weekly shop': ['Courses de la semaine', 'Compra semanal', 'Wocheneinkauf'], 'Coffee': ['Café', 'Café', 'Kaffee'], 'Gas': ['Essence', 'Gasolina', 'Benzin'], 'Cinema': ['Cinéma', 'Cine', 'Kino'],
+  'Credit card': ['Carte de crédit', 'Tarjeta de crédito', 'Kreditkarte'], 'Car loan': ['Prêt auto', 'Préstamo del coche', 'Autokredit'], 'Emergency fund': ["Fonds d'urgence", 'Fondo de emergencia', 'Notgroschen'], 'Holiday': ['Vacances', 'Vacaciones', 'Urlaub'],
+  'Cancel the free trial before Friday': ["Résilier l'essai gratuit avant vendredi", 'Cancelar la prueba gratis antes del viernes', 'Gratis-Test vor Freitag kündigen'],
+  // templates ({0}, {1} = numbers, dates or names)
+  'Hi {0}': ['Salut {0}', 'Hola {0}', 'Hallo {0}'], '{0} days to payday': ['{0} j avant la paie', '{0} días para el cobro', 'Noch {0} Tage bis Zahltag'],
+  'Spent today {0}': ["Dépensé aujourd'hui {0}", 'Gastado hoy {0}', 'Heute ausgegeben {0}'], '{0} a day': ['{0} par jour', '{0} al día', '{0} pro Tag'],
+  'Was {0} paid?': ['As-tu payé {0} ?', '¿Se pagó {0}?', 'Wurde {0} bezahlt?'], 'It was due {0}': ['Prévu le {0}', 'Vencía el {0}', 'War fällig am {0}'], 'Was due {0}': ['Prévu le {0}', 'Vencía el {0}', 'Fällig war {0}'],
+  '{0} goes out today': ["{0} part aujourd'hui", '{0} sale hoy', '{0} geht heute raus'], 'Payday: {0}': ['Jour de paie : {0}', 'Día de cobro: {0}', 'Zahltag: {0}'],
+  'The real app. Log up to {0} spends to try it.': ['La vraie app. Note jusqu\'à {0} dépenses pour l\'essayer.', 'La app real. Anota hasta {0} gastos para probarla.', 'Die echte App. Trag bis zu {0} Ausgaben ein, um sie zu testen.'],
+  '{0} left.': ['Encore {0}.', 'Quedan {0}.', 'Noch {0}.'],
+  "It's been {0} days. Three quick steps and every number is right again: tick the bills that went out, add money that came in, then type your bank balance.": ["Ça fait {0} jours. Trois petites étapes et tout est juste : coche les factures payées, ajoute l'argent rentré, puis tape ton solde.", 'Han pasado {0} días. Tres pasos y todo vuelve a cuadrar: marca las facturas pagadas, añade lo que entró y escribe tu saldo.', 'Es sind {0} Tage vergangen. Drei schnelle Schritte und alles stimmt wieder: bezahlte Rechnungen abhaken, Einnahmen eintragen, Kontostand eingeben.'],
+  'next {0}': ['prochaine {0}', 'próximo {0}', 'nächster {0}'], '{0}/month set aside': ['{0}/mois mis de côté', '{0}/mes apartado', '{0}/Monat zurückgelegt'], '{0}/month': ['{0}/mois', '{0}/mes', '{0}/Monat'],
+  'min {0}/month': ['min {0}/mois', 'mín. {0}/mes', 'min. {0}/Monat'], 'free by {0}': ['libre en {0}', 'libre en {0}', 'frei ab {0}'],
+  'Every few months (every {0} months)': ['Tous les quelques mois (tous les {0} mois)', 'Cada pocos meses (cada {0} meses)', 'Alle paar Monate (alle {0} Monate)'],
+  '{0} of {1}': ['{0} sur {1}', '{0} de {1}', '{0} von {1}'], '{0} left of {1}': ['{0} restants sur {1}', 'quedan {0} de {1}', '{0} übrig von {1}'],
+  "Over by {0}, that's ok": ["Dépassé de {0}, ce n'est pas grave", 'Pasado por {0}, no pasa nada', '{0} drüber, ist okay'],
+  '🎯 {0}': ['🎯 {0}', '🎯 {0}', '🎯 {0}'], '({0})': ['({0})', '({0})', '({0})'], 'Set aside for {0}': ['Mis de côté pour {0}', 'Apartado para {0}', 'Zurückgelegt für {0}'],
+  'Days until payday ({0})': ["Jours jusqu'à la paie ({0})", 'Días hasta el cobro ({0})', 'Tage bis Zahltag ({0})'],
+  'Payments: {0} on {1}': ['Paiements : {0} le {1}', 'Pagos: {0} el {1}', 'Zahlungen: {0} am {1}'], '{0} on {1}': ['{0} le {1}', '{0} el {1}', '{0} am {1}'], '{0} logged': ['{0} noté', '{0} anotado', '{0} eingetragen']
+};
+const PAT = [[/^Hi (.+)$/, 'Hi {0}'], [/^🎯 (.+)$/, '🎯 {0}'], [/^(\d+) days? to payday$/, '{0} days to payday'], [/^Spent today (.+)$/, 'Spent today {0}'], [/^(.+) a day$/, '{0} a day'],
+  [/^Was (.+) paid\?$/, 'Was {0} paid?'], [/^It was due (.+)$/, 'It was due {0}'], [/^Was due (.+)$/, 'Was due {0}'], [/^(.+) goes out today$/, '{0} goes out today'], [/^Payday: (.+)$/, 'Payday: {0}'],
+  [/^The real app\. Log up to (\d+) spends to try it\.$/, 'The real app. Log up to {0} spends to try it.'], [/^(\d+) left\.$/, '{0} left.'],
+  [/^It's been (\d+) days\. Three quick steps and every number is right again: tick the bills that went out, add money that came in, then type your bank balance\.$/, "It's been {0} days. Three quick steps and every number is right again: tick the bills that went out, add money that came in, then type your bank balance."],
+  [/^next (.+)$/, 'next {0}'], [/^(.+)\/month set aside$/, '{0}/month set aside'], [/^min (.+)\/month$/, 'min {0}/month'], [/^(.*\d.*)\/month$/, '{0}/month'], [/^free by (.+)$/, 'free by {0}'],
+  [/^Every few months \(every (\d+) months\)$/, 'Every few months (every {0} months)'], [/^(.*\d.*?) left of (.*\d.*)$/, '{0} left of {1}'], [/^(.*\d.*?) of (.*\d.*)$/, '{0} of {1}'],
+  [/^Over by (.+), that's ok$/, "Over by {0}, that's ok"], [/^Set aside for (.+)$/, 'Set aside for {0}'], [/^Days until payday \((.+)\)$/, 'Days until payday ({0})'], [/^\((.+)\)$/, '({0})'],
+  [/^Payments: (.+?) on (.+)$/, 'Payments: {0} on {1}'], [/^(.*\d.*?) on (.+)$/, '{0} on {1}'], [/^(.+) logged$/, '{0} logged']];
+function x1(s) { const r = I18N[s]; return r && LI[lang()] != null ? r[LI[lang()]] : null; }
+function fill(k, g) { return (x1(k) ?? k).replace(/\{(\d)\}/g, (_, i) => g[i] == null ? '' : (x1(g[i]) ?? g[i])); }
+function part(s) {
+  const e = x1(s); if (e != null) return e;
+  for (const [re, k] of PAT) { const m = s.match(re); if (m) return fill(k, m.slice(1)); }
+  if (s.includes(', ')) { const ps = s.split(', '); if (ps.every(p => x1(p) != null)) return ps.map(x1).join(', '); }
+  return null;
+}
+function tx(s) {
+  if (lang() === 'en' || s == null) return s;
+  const t = String(s).trim(); if (!t) return s;
+  let r = x1(t);
+  if (r == null && t.includes(' · ')) { const ps = t.split(' · '), out = ps.map(part); if (out.some(o => o != null)) r = ps.map((p, i) => out[i] ?? p).join(' · '); }
+  if (r == null) r = part(t);
+  return r == null ? s : s.match(/^\s*/)[0] + r + s.match(/\s*$/)[0];
+}
+/* every text node keeps its English original, so switching language always starts from English */
+function trDom(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /^(TEXTAREA|SCRIPT|STYLE)$/.test(n.parentNode?.nodeName) ? 2 : 1 });
+  let n; if (root.nodeType === 3) trText(root); while ((n = w.nextNode())) trText(n);
+  if (root.querySelectorAll) [root, ...root.querySelectorAll('[placeholder],[title]')].forEach(el => ['placeholder', 'title'].forEach(a => {
+    if (!el.hasAttribute?.(a)) return; const k = 'en_' + a, src = el.dataset[k] ?? el.getAttribute(a), v = tx(src);
+    if (v !== src) el.dataset[k] = src; el.setAttribute(a, v);
+  }));
+}
+function trText(n) { if (/^(TEXTAREA|SCRIPT|STYLE)$/.test(n.parentNode?.nodeName)) return; const src = n._en ?? n.nodeValue, v = tx(src); if (v !== src) n._en = src; if (n.nodeValue !== v) n.nodeValue = v; }
+const MO = new MutationObserver(ms => { MO.disconnect(); ms.forEach(m => m.type === 'characterData' ? (m.target._en = undefined, trText(m.target)) : m.addedNodes.forEach(n => (n.nodeType === 1 || n.nodeType === 3) && trDom(n))); watchLang(); });
+const watchLang = () => MO.observe(document.body, { childList: true, subtree: true, characterData: true });
+function setLang(l) { S.settings.lang = l; save(); document.documentElement.lang = l; MO.disconnect(); trDom(document.body); watchLang(); render(); }
+const OTHER = () => S.cats.includes('Other') ? 'Other' : S.cats.includes(tx('Other')) ? tx('Other') : S.cats[S.cats.length - 1];
+const DEFCATS = ['Groceries', 'Eating out', 'Transport', 'Fun', 'Home', 'Health', 'Kids', 'Other'];
+
+function fresh(raw) {
+  return { v: 1, settings: { lang: lang(), name: '', title: 'My calm money plan', currency: '$', theme: 'soft', mode: 'simple', balance: null, balanceTs: 0, cushion: 0, lastOpen: Date.now(), example: false },
+    cats: raw ? DEFCATS.slice() : DEFCATS.map(tx),
     spends: [], income: [], bills: [], pays: [], envelopes: {}, debts: [], debtOrder: 'avalanche', goals: [], dump: [], notes: {}, moves: [] };
 }
 let S;
@@ -211,8 +438,8 @@ const U = { view: 'today', mo: new Date(today().getFullYear(), today().getMonth(
 /* ---------- money ---------- */
 function money(v, dec) {
   const c = S.settings.currency || '$'; const n = Math.abs(+v || 0);
-  const s = n.toLocaleString('en-US', { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 });
-  const after = ['kr', 'zł', 'CHF'].includes(c);
+  const s = n.toLocaleString(loc(), { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 });
+  const after = ['kr', 'zł', 'CHF'].includes(c) || (c === '€' && lang() !== 'en');
   return (v < 0 ? '−' : '') + (after ? s + ' ' + c : c + s);
 }
 const m2 = v => money(v, Math.round(v * 100) % 100 !== 0);
@@ -285,7 +512,7 @@ function calc() {
 /* ---------- views ---------- */
 const VIEWS = [['today', 'Today', '☀︎'], ['bills', 'Bills', '✓'], ['month', 'Month', '▦'], ['plan', 'Plan', '◔'], ['settings', 'Settings', '⚙︎']];
 function render() {
-  document.documentElement.dataset.theme = S.settings.theme;
+  document.documentElement.dataset.theme = S.settings.theme; document.documentElement.lang = lang();
   document.querySelector('meta[name=theme-color]').content = S.settings.theme === 'midnight' ? '#0E1630' : '#F7F6FB';
   document.body.classList.toggle('focus', U.focus);
   $('#hTitle').textContent = S.settings.title || 'My calm money plan';
@@ -353,14 +580,14 @@ function vBills() {
 }
 function vMonth() {
   const m = U.mo, y = m.getFullYear(), mo = m.getMonth(), t = today();
-  $('#moTitle').textContent = m.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  $('#moTitle').textContent = m.toLocaleDateString(loc(), { month: 'long', year: 'numeric' });
   const first = new Date(y, mo, 1), start = addDays(first, -((first.getDay() + 6) % 7)), cells = [];
   for (let i = 0; i < 42; i++) cells.push(addDays(start, i));
   const from = cells[0], to = cells[41];
   const billMap = {}, payMap = {};
   S.bills.forEach(b => occ(b, from, to).forEach(d => (billMap[iso(d)] = billMap[iso(d)] || []).push(b)));
   S.pays.forEach(p => payDates(p, from, to).forEach(d => (payMap[iso(d)] = payMap[iso(d)] || []).push(p)));
-  $('#cal').innerHTML = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="h">${d}</div>`).join('') + cells.map(d => {
+  $('#cal').innerHTML = [0,1,2,3,4,5,6].map(i => new Date(2024, 0, 1 + i).toLocaleDateString(loc(), { weekday: 'short' })).map(d => `<div class="h">${d}</div>`).join('') + cells.map(d => {
     const k = iso(d), sp = spentOn(k), b = billMap[k] || [], p = payMap[k] || [];
     return `<button class="d ${d.getMonth() !== mo ? 'out' : ''} ${k === iso(t) ? 'today' : ''}" data-day="${k}"><b>${d.getDate()}</b>${sp ? `<span class="s">${money(sp)}</span>` : ''}<span class="dots">${p.map(() => '<i style="background:var(--good)"></i>').join('')}${b.map(x => `<i style="background:${isPaid(x, d) ? 'var(--line)' : 'var(--peach)'}"></i>`).join('')}</span></button>`;
   }).join('');
@@ -391,7 +618,7 @@ function vPlan() {
       <div class="card"><h2>Cushion</h2><p class="muted" style="font-size:14px">An amount the planner never counts as spendable. Change it in Settings.</p><p style="font-size:22px;font-weight:800;margin-top:6px">${money(num(S.settings.cushion))}</p></div>`;
   } else if (U.plan === 'envelopes') {
     const by = {}; S.spends.filter(x => x.date.startsWith(ym)).forEach(x => by[x.cat] = (by[x.cat] || 0) + num(x.amt));
-    h = `<div class="card"><h2>Spending envelopes · ${MON[t.getMonth()]} <button class="r btn sm" data-act="envelopes">Edit limits</button></h2>${S.cats.map(c => { const lim = num(S.envelopes[c]), sp = by[c] || 0; if (!lim && !sp) return ''; const p = lim ? sp / lim : 0; return `<div class="row" style="flex-wrap:wrap"><div class="main"><b><span class="tag" style="background:${catColor(c)}"></span>${esc(c)}</b><small>${lim ? (sp <= lim ? m2(lim - sp) + ' left of ' + m2(lim) : 'Over by ' + m2(sp - lim) + ', that\'s ok') : 'No limit set'}</small></div><div class="amt">${m2(sp)}</div>${lim ? `<div class="bar ${p > 1 ? 'over' : ''}" style="flex-basis:100%"><i style="width:${Math.min(100, p * 100)}%"></i></div>` : ''}</div>`; }).join('') || '<div class="empty">Set gentle limits per category. Going over just shows a soft colour.</div>'}</div>`;
+    h = `<div class="card"><h2>Spending envelopes · ${monShort(t)} <button class="r btn sm" data-act="envelopes">Edit limits</button></h2>${S.cats.map(c => { const lim = num(S.envelopes[c]), sp = by[c] || 0; if (!lim && !sp) return ''; const p = lim ? sp / lim : 0; return `<div class="row" style="flex-wrap:wrap"><div class="main"><b><span class="tag" style="background:${catColor(c)}"></span>${esc(c)}</b><small>${lim ? (sp <= lim ? m2(lim - sp) + ' left of ' + m2(lim) : 'Over by ' + m2(sp - lim) + ', that\'s ok') : 'No limit set'}</small></div><div class="amt">${m2(sp)}</div>${lim ? `<div class="bar ${p > 1 ? 'over' : ''}" style="flex-basis:100%"><i style="width:${Math.min(100, p * 100)}%"></i></div>` : ''}</div>`; }).join('') || '<div class="empty">Set gentle limits per category. Going over just shows a soft colour.</div>'}</div>`;
   } else if (U.plan === 'debt') {
     const order = S.debts.slice().sort((a, b) => S.debtOrder === 'avalanche' ? num(b.rate) - num(a.rate) : num(a.bal) - num(b.bal));
     h = `<div class="card"><h2>Debt <button class="r btn sm" data-add="debt">+ Debt</button></h2><div class="seg" style="margin-bottom:8px"><button class="${S.debtOrder === 'avalanche' ? 'on' : ''}" data-dorder="avalanche">Highest rate first</button><button class="${S.debtOrder === 'snowball' ? 'on' : ''}" data-dorder="snowball">Smallest first</button></div>
@@ -408,7 +635,7 @@ function payoff(d) {
   const B = num(d.bal), r = num(d.rate) / 1200, P = num(d.min); if (B <= 0) return 'paid off 🎉'; if (P <= 0) return 'add a monthly payment';
   if (r > 0 && P <= r * B) return 'minimum doesn\'t cover interest';
   const n = r > 0 ? Math.ceil(-Math.log(1 - r * B / P) / Math.log(1 + r)) : Math.ceil(B / P);
-  const end = new Date(today().getFullYear(), today().getMonth() + n, 1); return 'free by ' + MON[end.getMonth()] + ' ' + end.getFullYear();
+  const end = new Date(today().getFullYear(), today().getMonth() + n, 1); return 'free by ' + end.toLocaleDateString(loc(), { month: 'short', year: 'numeric' });
 }
 function milestones() {
   const t = today(), months = {};
@@ -426,6 +653,7 @@ function milestones() {
 function vSettings() {
   const s = S.settings;
   $('#setCard').innerHTML = `<h2>Settings</h2>
+  <div class="field"><label>Language</label><select data-set="lang">${LANGS.map(([c, l]) => `<option value="${c}" ${c === lang() ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
   <div class="field"><label>Your name</label><input data-set="name" value="${esc(s.name)}" placeholder="Optional"></div>
   <div class="field"><label>Planner title</label><input data-set="title" value="${esc(s.title)}"></div>
   <div class="field"><label>Currency</label><select data-set="currency">${CURRENCIES.map(([c, l]) => `<option value="${c}" ${c === s.currency ? 'selected' : ''}>${c} · ${l}</option>`).join('')}</select></div>
@@ -464,7 +692,7 @@ function spendForm(x) {
 }
 function addSpend(amt, cat, note, date) {
   if (DEMO && S.spends.filter(x => !x.ex).length >= DEMO_LIMIT) { toast('Demo limit reached: your numbers stay readable'); return false; }
-  S.spends.push({ id: uid(), ts: Date.now(), date: date || iso(today()), amt, cat: cat || 'Other', note: note || '' }); return true;
+  S.spends.push({ id: uid(), ts: Date.now(), date: date || iso(today()), amt, cat: cat || OTHER(), note: note || '' }); return true;
 }
 function billForm(b) {
   const isNew = !b; b = b || { name: '', amt: '', freq: 'monthly', day: today().getDate(), day2: 15, start: iso(today()), every: 6, setAside: false, paid: {} };
@@ -533,9 +761,9 @@ function quick() {
   const el = $('#quick'), v = el.value.trim(); if (!v) return spendForm();
   const m = v.match(/^([\d.,]+)\s*(.*)$/);
   if (m) {
-    const amt = num(m[1]), words = m[2].toLowerCase(); let cat = S.cats.find(c => words && c.toLowerCase().startsWith(words.split(' ')[0])) || S.cats.find(c => words && words.includes(c.toLowerCase()));
-    const note = cat ? (words.toLowerCase() === cat.toLowerCase() ? '' : m[2]) : m[2];
-    if (!amt) return; if (!addSpend(amt, cat || 'Other', note)) return; el.value = ''; save(); render(); toast(m2(amt) + ' logged' + (cat ? ' · ' + cat : ''));
+    const amt = num(m[1]), words = m[2].toLowerCase(); const w0 = words.split(' ')[0], nm = c => [c.toLowerCase(), tx(c).toLowerCase()]; let cat = S.cats.find(c => words && nm(c).some(n => n.startsWith(w0))) || S.cats.find(c => words && nm(c).some(n => words.includes(n)));
+    const note = cat ? (nm(cat).includes(words) ? '' : m[2]) : m[2];
+    if (!amt) return; if (!addSpend(amt, cat || OTHER(), note)) return; el.value = ''; save(); render(); toast(m2(amt) + ' logged' + (cat ? ' · ' + cat : ''));
   } else {
     const w = v.toLowerCase(); const hit = VIEWS.find(([k, l]) => l.toLowerCase().startsWith(w)) || (['money', 'savings', 'goals', 'debt', 'envelopes', 'milestones', 'brain dump', 'dump'].find(x => x.startsWith(w)) ? ['plan'] : null);
     if (hit) { U.view = hit[0]; if (hit[0] === 'plan') U.plan = w.startsWith('sav') || w.startsWith('goal') ? 'goals' : w.startsWith('debt') ? 'debt' : w.startsWith('env') ? 'envelopes' : w.startsWith('mile') ? 'wins' : w.includes('dump') || w.startsWith('brain') ? 'dump' : 'money'; el.value = ''; render(); }
@@ -549,9 +777,9 @@ document.addEventListener('click', e => {
   if (!b) { if (e.target.id === 'modal') closeForm(); return; }
   const d = b.dataset;
   if (d.v) { U.view = d.v; render(); scrollTo(0, 0); return; }
-  if (d.form) { if (d.form === 'cancel') return closeForm(); if (d.form === 'save' && FORM.onSave) return FORM.onSave(formVals()); if (d.form === 'del' && FORM.onDelete && confirm('Delete this?')) return FORM.onDelete(); return; }
+  if (d.form) { if (d.form === 'cancel') return closeForm(); if (d.form === 'save' && FORM.onSave) return FORM.onSave(formVals()); if (d.form === 'del' && FORM.onDelete && confirm(tx('Delete this?'))) return FORM.onDelete(); return; }
   if (d.add) return ({ bill: () => billForm(), pay: () => payForm(), goal: () => goalForm(), debt: () => debtForm() })[d.add]();
-  if (d.quick) { if (addSpend(num(d.quick), 'Other', '')) { save(); render(); toast(money(+d.quick) + ' logged · tap it to add details'); } return; }
+  if (d.quick) { if (addSpend(num(d.quick), OTHER(), '')) { save(); render(); toast(money(+d.quick) + ' logged · tap it to add details'); } return; }
   if (d.editSpend) return spendForm(S.spends.find(x => x.id === d.editSpend));
   if (d.editBill) return billForm(S.bills.find(x => x.id === d.editBill));
   if (d.editPay) return payForm(S.pays.find(x => x.id === d.editPay));
@@ -573,20 +801,22 @@ const ACT = {
   dismissAway: () => { S.settings.lastOpen = Date.now(); save(); render(); },
   dump: () => { const el = $('#dumpIn'); if (el.value.trim()) { S.dump.push({ id: uid(), text: el.value.trim(), date: iso(today()) }); save(); vPlan(); setTimeout(() => $('#dumpIn')?.focus(), 0); } },
   envelopes: () => openForm('Monthly limits', S.cats.map(c => ({ k: 'e_' + S.cats.indexOf(c), l: c, t: 'num', v: S.envelopes[c] || '' })), v => { S.cats.forEach((c, i) => { const n = num(v['e_' + i]); if (n) S.envelopes[c] = n; else delete S.envelopes[c]; }); done(); }),
-  cats: () => openForm('Spending categories', [{ k: 'cats', l: 'One per line', t: 'area', v: S.cats.join('\n') }], v => { const c = v.cats.split('\n').map(s => s.trim()).filter(Boolean); if (c.length) { S.cats = c.includes('Other') ? c : c.concat('Other'); } done(); }),
+  cats: () => openForm('Spending categories', [{ k: 'cats', l: 'One per line', t: 'area', v: S.cats.join('\n') }], v => { const c = v.cats.split('\n').map(s => s.trim()).filter(Boolean); if (c.length) { const o = OTHER(); S.cats = c.includes(o) ? c : c.concat(o); } done(); }),
   backup: () => dl('calm-budget-backup-' + iso(today()) + '.json', JSON.stringify(S, null, 1), 'application/json'),
   csv: () => dl('calm-budget-spending.csv', 'Date,Category,Amount,Note\n' + S.spends.slice().sort((a, b) => a.date.localeCompare(b.date)).map(x => [x.date, x.cat, num(x.amt).toFixed(2), '"' + String(x.note || '').replace(/"/g, '""') + '"'].join(',')).join('\n'), 'text/csv'),
-  example: () => { if (confirm('Show the example numbers? This replaces what is on screen (download a backup first if needed).')) { S = sample(); save(); U.view = 'today'; render(); } },
-  fresh: () => { if (confirm('Start an empty planner? Everything on this device will be cleared.')) { const keep = { theme: S.settings.theme, currency: S.settings.currency }; S = fresh(); Object.assign(S.settings, keep); save(); U.view = 'today'; render(); wizard(0); } },
-  start: () => { const keep = { theme: S.settings.theme }; S = fresh(); Object.assign(S.settings, keep); save(); U.view = 'today'; render(); wizard(0); }
+  example: () => { if (confirm(tx('Show the example numbers? This replaces what is on screen (download a backup first if needed).'))) { S = sample(); save(); U.view = 'today'; render(); } },
+  fresh: () => { if (confirm(tx('Start an empty planner? Everything on this device will be cleared.'))) { const keep = { theme: S.settings.theme, currency: S.settings.currency, lang: lang() }; S = fresh(); Object.assign(S.settings, keep); save(); U.view = 'today'; render(); wizard(0); } },
+  start: () => { const keep = { theme: S.settings.theme, lang: lang() }; S = fresh(); Object.assign(S.settings, keep); save(); U.view = 'today'; render(); wizard(0); }
 };
 function dl(name, content, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.closest('#sheet') && el.tagName === 'SELECT') formShow();
+  if (el.dataset.set === 'lang') return setLang(el.value);
+  if (el.id === 'f_lang') { setLang(el.value); if (!S.spends.length) S.cats = DEFCATS.map(tx); return; }
   if (el.dataset.set) { S.settings[el.dataset.set] = el.dataset.set === 'cushion' ? num(el.value) : el.value; save(); render(); }
   if (el.id === 'moNote') { if (el.value.trim()) S.notes[el.dataset.ym] = el.value; else delete S.notes[el.dataset.ym]; save(); }
-  if (el.id === 'restore' && el.files[0]) { const r = new FileReader(); r.onload = () => { try { const x = JSON.parse(r.result); if (!x.settings) throw 0; if (confirm('Replace everything with this backup?')) { S = Object.assign(fresh(), x); save(); render(); toast('Backup restored'); } } catch (err) { alert('That file is not a Calm Budget backup.'); } }; r.readAsText(el.files[0]); el.value = ''; }
+  if (el.id === 'restore' && el.files[0]) { const r = new FileReader(); r.onload = () => { try { const x = JSON.parse(r.result); if (!x.settings) throw 0; if (confirm(tx('Replace everything with this backup?'))) { S = Object.assign(fresh(), x); save(); render(); toast('Backup restored'); } } catch (err) { alert(tx('That file is not a Calm Budget backup.')); } }; r.readAsText(el.files[0]); el.value = ''; }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter') { if (e.target.id === 'quick') { e.preventDefault(); quick(); } if (e.target.id === 'dumpIn') { e.preventDefault(); ACT.dump(); } } if (e.key === 'Escape') closeForm(); });
 $('#quickGo').onclick = quick;
@@ -595,7 +825,7 @@ $('#focusBtn').onclick = () => { U.focus = !U.focus; U.view = 'today'; render();
 /* ---------- 4-step start ---------- */
 function wizard(step) {
   const steps = [
-    () => openForm('Step 1 of 4 · Make it yours', [{ k: 'name', l: 'Your name (optional)', v: S.settings.name }, { k: 'title', l: 'Planner title', v: S.settings.title }, { k: 'currency', l: 'Currency', t: 'select', opts: CURRENCIES.map(([c, l]) => [c, c + ' · ' + l]), v: S.settings.currency }], v => { Object.assign(S.settings, v); save(); render(); wizard(1); }),
+    () => openForm('Step 1 of 4 · Make it yours', [{ k: 'lang', l: 'Language', t: 'select', opts: LANGS, v: lang() }, { k: 'name', l: 'Your name (optional)', v: S.settings.name }, { k: 'title', l: 'Planner title', v: S.settings.title }, { k: 'currency', l: 'Currency', t: 'select', opts: CURRENCIES.map(([c, l]) => [c, c + ' · ' + l]), v: S.settings.currency }], v => { Object.assign(S.settings, v); save(); render(); wizard(1); }),
     () => openForm('Step 2 of 4 · Your balance', [{ k: 'bal', l: 'What is in your spending account right now?', t: 'num', v: '', hint: 'Copy it from your banking app.' }], v => { S.settings.balance = num(v.bal); S.settings.balanceTs = Date.now(); save(); render(); wizard(2); }),
     () => { payForm(); const o = FORM.onSave; FORM.onSave = v => { o(v); wizard(3); }; $('#sheet h3').textContent = 'Step 3 of 4 · Your next paycheck'; },
     () => { billForm(); const o = FORM.onSave; FORM.onSave = v => { o(v); toast('All set. That\'s your number.'); }; $('#sheet h3').textContent = 'Step 4 of 4 · Your biggest bill'; $('#sheet .actions').insertAdjacentHTML('afterbegin', '<button class="btn alt" data-form="cancel">Skip</button>'); }
@@ -604,7 +834,7 @@ function wizard(step) {
 
 /* ---------- example data ---------- */
 function sample() {
-  const X = fresh(), t = today(), D = n => iso(addDays(t, n)), ts = Date.now() - 864e5 * 3;
+  const X = fresh(true), t = today(), D = n => iso(addDays(t, n)), ts = Date.now() - 864e5 * 3;
   Object.assign(X.settings, { name: 'Sam', title: 'My calm money plan', balance: 1020, balanceTs: ts, cushion: 100, example: true, mode: 'all' });
   X.pays = [{ id: uid(), name: 'Paycheck', amt: 1650, freq: 'biweekly', start: D(6), early: true }];
   X.bills = [
@@ -627,7 +857,7 @@ function sample() {
 }
 
 /* ---------- start ---------- */
-render();
+render(); trDom(document.body); watchLang();
 S.settings.lastOpen = Date.now(); save();
 if (!DEMO && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
