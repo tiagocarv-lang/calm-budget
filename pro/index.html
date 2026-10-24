@@ -168,6 +168,7 @@ svg text{fill:var(--muted);font-size:10px}
   <div class="card"><h2>Your data</h2>
     <p class="muted" style="font-size:14px;margin-bottom:10px">Everything stays on this device. Download a backup now and then.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm" data-act="sync" id="syncBtn">⇅ Sync phone & computer</button>
       <button class="btn sm" data-act="backup">Download a backup</button>
       <label class="btn sm alt">Restore a backup<input type="file" id="restore" accept=".json,application/json" hidden></label>
       <button class="btn sm alt" data-act="xlsx" id="xlsxBtn">Export to Excel</button>
@@ -187,6 +188,135 @@ svg text{fill:var(--muted);font-size:10px}
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
+<script>
+/* BestInCell Sync: phone <-> computer, no account.
+   Usage: BICSync.init({keys:['family-v1'], name:'Family Planner'})  then BICSync.open() from a button.
+   Data is encrypted on the device (AES-GCM 256) before it leaves; the server only stores ciphertext.
+   Pairing: device A shows a 6-digit code (10 min). Device B types it and receives the sync id + key,
+   wrapped with a key derived from the code (PBKDF2). */
+(function () {
+  const API = 'https://bic-sync.bestincell.workers.dev';
+  const LS = 'bic-sync';
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  const b64 = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const ub64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, '0')).join('');
+  let CFG = { keys: [], name: 'this app' }, ST = null, applying = false, timer = null, busy = false;
+
+  const loadSt = () => { try { ST = JSON.parse(localStorage.getItem(LS + ':' + CFG.keys[0])) } catch (e) { ST = null } };
+  const saveSt = () => localStorage.setItem(LS + ':' + CFG.keys[0], JSON.stringify(ST));
+
+  async function aes(rawKey) { return crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt', 'decrypt']) }
+  async function seal(key, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj))));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return b64(out);
+  }
+  async function open_(key, s) { const u = ub64(s); return JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12)))) }
+  async function codeKey(code) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('bestincell-pair-' + code), iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  const req = async (method, path, body) => {
+    const r = await fetch(API + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(j.error || r.status); e.status = r.status; e.body = j; throw e } return j;
+  };
+
+  const snapshot = () => { const o = {}; CFG.keys.forEach((k) => { const v = localStorage.getItem(k); if (v != null) o[k] = v }); return o };
+
+  async function push() {
+    if (!ST || busy) return; busy = true;
+    try {
+      const key = await aes(ub64(ST.k)); const t = Date.now();
+      await req('PUT', '/s/' + ST.sid, { t, data: await seal(key, snapshot()) });
+      ST.t = t; ST.last = t; saveSt(); status('Synced ✓');
+    } catch (e) { if (e.status === 409) await pull(true); else status('Offline: will sync later') }
+    finally { busy = false }
+  }
+  async function pull(force) {
+    if (!ST) return false;
+    try {
+      const r = await req('GET', '/s/' + ST.sid);
+      if (!r.data || (!force && r.t <= (ST.t || 0))) return false;
+      const snap = await open_(await aes(ub64(ST.k)), r.data);
+      applying = true; Object.entries(snap).forEach(([k, v]) => localStorage.setItem(k, v)); applying = false;
+      ST.t = r.t; ST.last = Date.now(); saveSt(); location.reload(); return true;
+    } catch (e) { status('Offline: will sync later'); return false }
+  }
+  const schedule = () => { if (!ST || applying) return; clearTimeout(timer); timer = setTimeout(push, 2500) };
+
+  // Watch writes to the app's keys.
+  const set0 = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (k, v) { set0.call(this, k, v); if (this === localStorage && CFG.keys.includes(k)) schedule() };
+
+  // ---------- UI ----------
+  let box;
+  function status(t) { const s = box && box.querySelector('#bic-st'); if (s) s.textContent = t }
+  function css() {
+    if (document.getElementById('bic-css')) return;
+    const s = document.createElement('style'); s.id = 'bic-css';
+    s.textContent = `#bic-sync{position:fixed;inset:0;z-index:9999;background:rgba(20,16,28,.45);display:grid;place-items:center;font:15px/1.45 Inter,system-ui,sans-serif}
+#bic-sync .p{background:#fff;color:#1d1a22;border-radius:22px;max-width:400px;width:calc(100% - 32px);padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+#bic-sync h3{margin:0 0 6px;font-size:20px}#bic-sync p{margin:0 0 14px;color:#6b6475}
+#bic-sync .b{display:block;width:100%;border:0;border-radius:14px;padding:13px;font:600 15px inherit;margin-top:8px;cursor:pointer;background:#1d1a22;color:#fff}
+#bic-sync .b.g{background:#f1edf5;color:#1d1a22}#bic-sync .code{font:800 40px/1 ui-monospace,monospace;letter-spacing:8px;text-align:center;padding:16px;background:#f6f3f9;border-radius:14px;margin:6px 0 10px}
+#bic-sync input{width:100%;box-sizing:border-box;font:800 30px ui-monospace,monospace;letter-spacing:8px;text-align:center;padding:12px;border:2px solid #e4dfea;border-radius:14px}
+#bic-sync small{display:block;color:#8a8494;margin-top:12px;font-size:12.5px}#bic-st{color:#3c8a5e;font-weight:600;margin-top:10px;min-height:20px}`;
+    document.head.appendChild(s);
+  }
+  function view(html) { box.querySelector('.p').innerHTML = html + '<div id="bic-st"></div><button class="b g" data-x="close">Close</button>' }
+  function home() {
+    if (ST) view(`<h3>⇅ Sync is on</h3><p>${CFG.name} stays the same on your linked devices. Changes sync within a few seconds.</p>
+      <button class="b" data-x="add">Link another device</button><button class="b g" data-x="now">Sync now</button><button class="b g" data-x="off">Turn off sync on this device</button>
+      <small>Encrypted on your device before it is sent. No account, no email.</small>`);
+    else view(`<h3>⇅ Sync phone & computer</h3><p>Use ${CFG.name} on your phone and your computer, with the same data.</p>
+      <button class="b" data-x="start">This is my first device</button><button class="b g" data-x="join">I have a code from my other device</button>
+      <small>No account, no email, no password. Your data is encrypted on this device before it is sent.</small>`);
+  }
+  async function showCode() {
+    view('<h3>Link a device</h3><p>Creating your code…</p>');
+    const kb = await codeKeyBox();
+    view(`<h3>Your code</h3><p>On your other device, open ${CFG.name} → Sync → “I have a code”, and type:</p><div class="code">${kb}</div><small>Valid for 10 minutes, works once.</small>`);
+  }
+  async function codeKeyBox() {
+    for (let i = 0; i < 5; i++) {
+      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
+      const box_ = await seal(await codeKey(code), { sid: ST.sid, k: ST.k });
+      try { await req('POST', '/pair', { code, box: box_ }); return code } catch (e) { if (e.status !== 409) throw e }
+    }
+    throw new Error('busy');
+  }
+  async function act(x) {
+    try {
+      if (x === 'close') return box.remove();
+      if (x === 'start') { if (CFG.beforeStart) CFG.beforeStart(); ST = { sid: hex(crypto.getRandomValues(new Uint8Array(16))), k: b64(crypto.getRandomValues(new Uint8Array(32))), t: 0 }; saveSt(); await push(); return showCode() }
+      if (x === 'add') return showCode();
+      if (x === 'now') { status('Syncing…'); if (!(await pull())) await push(); return }
+      if (x === 'off') { localStorage.removeItem(LS + ':' + CFG.keys[0]); ST = null; return home() }
+      if (x === 'join') return view(`<h3>Type the code</h3><p>Shown on your other device.</p><input id="bic-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code"><button class="b" data-x="link">Link</button><small>This device will take the data of your other device.</small>`);
+      if (x === 'link') {
+        const code = (box.querySelector('#bic-code').value || '').replace(/\D/g, '');
+        if (code.length !== 6) return status('Type the 6 digits');
+        status('Linking…');
+        const r = await req('GET', '/pair/' + code).catch(() => null);
+        if (!r) return status('Code not found or expired');
+        const v = await open_(await codeKey(code), r.box);
+        ST = { sid: v.sid, k: v.k, t: 0 }; saveSt(); status('Linked! Loading your data…');
+        if (!(await pull(true))) { await push(); home() }
+      }
+    } catch (e) { status('Something went wrong. Check your connection and try again.') }
+  }
+  window.BICSync = {
+    init(cfg) {
+      CFG = Object.assign(CFG, cfg); loadSt();
+      if (ST) { pull(); addEventListener('focus', () => pull()); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pull(); else if (timer) { clearTimeout(timer); push() } }) }
+    },
+    open() { css(); box && box.remove(); box = document.createElement('div'); box.id = 'bic-sync'; box.innerHTML = '<div class="p"></div>'; box.addEventListener('click', (e) => { const x = e.target.dataset.x; if (x) act(x); else if (e.target === box) box.remove() }); document.body.appendChild(box); home() },
+    get on() { return !!ST },
+  };
+})();
+
+</script>
 <script>
 const DEMO = /*DEMO*/false;
 const PRO = /*PRO*/true;
@@ -485,6 +615,8 @@ let S;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
 if (!S) S = sample();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+if (DEMO) { const sb = document.getElementById('syncBtn'); if (sb) sb.remove(); }
+if (!DEMO && window.BICSync) BICSync.init({ keys: [KEY], name: document.title, beforeStart: save });
 const U = { view: 'today', mo: new Date(today().getFullYear(), today().getMonth(), 1), day: iso(today()), plan: 'money', focus: false };
 
 /* ---------- money ---------- */
@@ -1023,6 +1155,7 @@ const ACT = {
   dump: () => { const el = $('#dumpIn'); if (el.value.trim()) { S.dump.push({ id: uid(), text: el.value.trim(), date: iso(today()) }); save(); vPlan(); setTimeout(() => $('#dumpIn')?.focus(), 0); } },
   envelopes: () => openForm('Monthly limits', S.cats.map(c => ({ k: 'e_' + S.cats.indexOf(c), l: c, t: 'num', v: S.envelopes[c] || '' })), v => { S.cats.forEach((c, i) => { const n = num(v['e_' + i]); if (n) S.envelopes[c] = n; else delete S.envelopes[c]; }); done(); }),
   cats: () => openForm('Spending categories', [{ k: 'cats', l: 'One per line', t: 'area', v: S.cats.join('\n') }], v => { const c = v.cats.split('\n').map(s => s.trim()).filter(Boolean); if (c.length) { const o = OTHER(); S.cats = c.includes(o) ? c : c.concat(o); } done(); }),
+  sync: () => { if (!DEMO && window.BICSync) BICSync.open(); },
   backup: () => dl('calm-budget-backup-' + iso(today()) + '.json', JSON.stringify(S, null, 1), 'application/json'),
   csv: () => dl('calm-budget-spending.csv', 'Date,Category,Amount,Note\n' + S.spends.slice().sort((a, b) => a.date.localeCompare(b.date)).map(x => [x.date, x.cat, num(x.amt).toFixed(2), '"' + String(x.note || '').replace(/"/g, '""') + '"'].join(',')).join('\n'), 'text/csv'),
   example: () => { if (confirm(tx('Show the example numbers? This replaces what is on screen (download a backup first if needed).'))) { S = sample(); save(); U.view = 'today'; render(); } },
