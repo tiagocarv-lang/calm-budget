@@ -227,65 +227,195 @@ code{background:var(--soft);border-radius:6px;padding:1px 5px;font-size:13px;wor
    Usage: BICSync.init({keys:['family-v1'], name:'Family Planner'})  then BICSync.open() from a button.
    Data is encrypted on the device (AES-GCM 256) before it leaves; the server only stores ciphertext.
    Pairing: device A shows a 6-digit code (10 min). Device B types it and receives the sync id + key,
-   wrapped with a key derived from the code (PBKDF2). */
+   wrapped with a key derived from the code (PBKDF2).
+   v2 (2026-11-02): no reliance on device clocks, 3-way merge when two devices edited (nothing is lost),
+   automatic retries, background check every 45 s, gzip for big data (photos), clear error messages.
+   v3 (2026-11-02): one link for every app on the site. The first link stores a group id + key ("bic-sync:*");
+   every other app derives its own sync id from it (sha256(group:appKey)) and turns sync on by itself. */
 (function () {
   const API = 'https://bic-sync.bestincell.workers.dev';
   const LS = 'bic-sync';
+  const MAXLEN = 1900000, ZIP_OVER = 200000, POLL = 45000;
   const enc = new TextEncoder(), dec = new TextDecoder();
-  const b64 = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') };
   const ub64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
   const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, '0')).join('');
-  let CFG = { keys: [], name: 'this app' }, ST = null, applying = false, timer = null, busy = false;
+  let CFG = { keys: [], name: 'this app' }, ST = null, applying = false, timer = null, retry = null, busy = false, again = false, edits = 0, fails = 0, lastMsg = '';
+  const set0 = Storage.prototype.setItem;
 
-  const loadSt = () => { try { ST = JSON.parse(localStorage.getItem(LS + ':' + CFG.keys[0])) } catch (e) { ST = null } };
-  const saveSt = () => localStorage.setItem(LS + ':' + CFG.keys[0], JSON.stringify(ST));
+  const stKey = () => LS + ':' + CFG.keys[0];
+  let OFF = false; // sync turned off for this app on this device: never auto-join it
+  const loadSt = () => { try { ST = JSON.parse(localStorage.getItem(stKey())) } catch (e) { ST = null } OFF = !!(ST && ST.off); if (OFF || (ST && !ST.sid)) ST = null };
+  const saveSt = () => { try { set0.call(localStorage, stKey(), JSON.stringify(ST)) } catch (e) {} };
 
-  async function aes(rawKey) { return crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt', 'decrypt']) }
-  async function seal(key, obj) {
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj))));
-    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return b64(out);
+  // ---------- one link for all apps ----------
+  const GK = LS + ':*';
+  const loadG = () => { try { const g = JSON.parse(localStorage.getItem(GK)); return g && g.g && g.k ? g : null } catch (e) { return null } };
+  const saveG = (g) => { try { set0.call(localStorage, GK, JSON.stringify(g)) } catch (e) {} };
+  const derive = async (g) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(g + ':' + CFG.keys[0])))).slice(0, 32);
+  function promote() { // device linked before v3: its oldest per-app link becomes the group (same choice on every linked device)
+    if (loadG()) return;
+    const c = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS + ':') && k !== GK) { try { const s = JSON.parse(localStorage.getItem(k)); if (s && s.sid && s.k && !s.j) c.push(s) } catch (e) {} } }
+    if (c.length) { c.sort((a, b) => (a.sid < b.sid ? -1 : 1)); saveG({ g: c[0].sid, k: c[0].k }) }
   }
-  async function open_(key, s) { const u = ub64(s); return JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12)))) }
+  let joining = false;
+  async function autoJoin() {
+    const G = loadG(); if (ST || OFF || !G || joining) return; joining = true;
+    try {
+      const empty = !CFG.keys.some((k) => localStorage.getItem(k) != null);
+      ST = { v: 2, sid: await derive(G.g), k: G.k, t: 0, d: !empty, j: 1, g: G.g }; saveSt(); listen(); await sync();
+    } finally { joining = false }
+  }
+
+  // ---------- crypto ----------
+  async function aes(rawKey) { return crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, ['encrypt', 'decrypt']) }
+  const gz = (u8, how) => new Response(new Blob([u8]).stream().pipeThrough(how)).arrayBuffer().then((b) => new Uint8Array(b));
+  async function seal(key, obj) {
+    let pt = enc.encode(JSON.stringify(obj)), pre = '';
+    if (pt.length > ZIP_OVER && window.CompressionStream) { pt = await gz(pt, new CompressionStream('gzip')); pre = 'z1.' }
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, pt));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return pre + b64(out);
+  }
+  async function open_(key, s) {
+    const z = s.startsWith('z1.'); const u = ub64(z ? s.slice(3) : s);
+    let pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12)));
+    if (z) { if (!window.DecompressionStream) throw Object.assign(new Error('old'), { old: true }); pt = await gz(pt, new DecompressionStream('gzip')) }
+    return JSON.parse(dec.decode(pt));
+  }
   async function codeKey(code) {
     const base = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('bestincell-pair-' + code), iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
   const req = async (method, path, body) => {
-    const r = await fetch(API + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const ac = window.AbortController ? new AbortController() : null, to = ac && setTimeout(() => ac.abort(), 25000);
+    let r;
+    try { r = await fetch(API + path, { method, cache: 'no-store', signal: ac && ac.signal, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined }) }
+    catch (e) { throw Object.assign(new Error('net'), { net: true }) }
+    finally { clearTimeout(to) }
     const j = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(j.error || r.status); e.status = r.status; e.body = j; throw e } return j;
   };
 
-  const snapshot = () => { const o = {}; CFG.keys.forEach((k) => { const v = localStorage.getItem(k); if (v != null) o[k] = v }); return o };
+  // ---------- last synced copy (base for merging), kept in IndexedDB ----------
+  const idb = (mode, fn) => new Promise((res) => {
+    try {
+      const o = indexedDB.open('bic-sync', 1);
+      o.onupgradeneeded = () => o.result.createObjectStore('base');
+      o.onerror = () => res(null);
+      o.onsuccess = () => { try { const tx = o.result.transaction('base', mode), rq = fn(tx.objectStore('base')); tx.oncomplete = () => { res(rq.result); o.result.close() }; tx.onerror = tx.onabort = () => res(null) } catch (e) { res(null) } };
+    } catch (e) { res(null) }
+  });
+  const getBase = () => idb('readonly', (s) => s.get(ST.sid));
+  const putBase = (snap) => idb('readwrite', (s) => s.put(snap, ST.sid));
 
-  async function push() {
-    if (!ST || busy) return; busy = true;
-    try {
-      const key = await aes(ub64(ST.k)); const t = Date.now();
-      await req('PUT', '/s/' + ST.sid, { t, data: await seal(key, snapshot()) });
-      ST.t = t; ST.last = t; saveSt(); status('Synced ✓');
-    } catch (e) { if (e.status === 409) await pull(true); else status('Offline: will sync later') }
-    finally { busy = false }
+  // ---------- data ----------
+  const snapshot = () => { const o = {}; CFG.keys.forEach((k) => { const v = localStorage.getItem(k); if (v != null) o[k] = v }); return o };
+  function apply(snap) {
+    let changed = false; applying = true;
+    try { Object.entries(snap).forEach(([k, v]) => { if (CFG.keys.includes(k) && localStorage.getItem(k) !== v) { localStorage.setItem(k, v); changed = true } }) }
+    finally { applying = false }
+    return changed;
   }
-  async function pull(force) {
-    if (!ST) return false;
-    try {
-      const r = await req('GET', '/s/' + ST.sid);
-      if (!r.data || (!force && r.t <= (ST.t || 0))) return false;
-      const snap = await open_(await aes(ub64(ST.k)), r.data);
-      applying = true; Object.entries(snap).forEach(([k, v]) => localStorage.setItem(k, v)); applying = false;
-      ST.t = r.t; ST.last = Date.now(); saveSt(); location.reload(); return true;
-    } catch (e) { status('Offline: will sync later'); return false }
+  // 3-way merge. b = last synced value (nb: whether we know it), l = this device, r = server.
+  // Lists of items with an id are merged item by item, so edits made on two devices are both kept.
+  const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const same = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+  const idList = (a) => Array.isArray(a) && a.every((x) => isObj(x) && x.id != null);
+  function m3(b, l, r, nb) {
+    if (same(l, r)) return l;
+    if (nb && same(l, b)) return r;
+    if (nb && same(r, b)) return l;
+    if (l === undefined) return r;
+    if (r === undefined) return l;
+    if (isObj(l) && isObj(r)) {
+      const o = {}, bo = isObj(b) ? b : {};
+      new Set([...Object.keys(l), ...Object.keys(r)]).forEach((k) => { const v = m3(bo[k], l[k], r[k], nb); if (v !== undefined) o[k] = v });
+      return o;
+    }
+    if (idList(l) && idList(r)) {
+      const id = (x) => String(x.id), bm = new Map((idList(b) ? b : []).map((x) => [id(x), x])), lm = new Map(l.map((x) => [id(x), x])), rm = new Map(r.map((x) => [id(x), x]));
+      const order = l.map(id), sig = (x) => JSON.stringify(Object.assign({}, x, { id: 0 })), lsig = nb ? null : new Set(l.map(sig));
+      // First merge without history: skip the same item stored under another id (e.g. example data).
+      r.forEach((x, i) => { const k = id(x); if (lm.has(k)) return;
+        if (lsig && lsig.has(sig(x))) { rm.delete(k); return }
+        let at = 0; for (let j = i - 1; j >= 0; j--) { const p = order.indexOf(id(r[j])); if (p >= 0) { at = p + 1; break } } order.splice(at, 0, k) });
+      return order.map((k) => m3(bm.get(k), lm.get(k), rm.get(k), nb)).filter((x) => x !== undefined);
+    }
+    return l;
   }
-  const schedule = () => { if (!ST || applying) return; clearTimeout(timer); timer = setTimeout(push, 2500) };
+  const pj = (s) => { try { return { ok: true, v: JSON.parse(s) } } catch (e) { return { ok: false } } };
+  function merge(base, local, remote) {
+    const o = {}, nb = !!base;
+    new Set([...Object.keys(local), ...Object.keys(remote)]).forEach((k) => {
+      const l = local[k], r = remote[k], b = nb ? base[k] : undefined;
+      if (l === r || r === undefined) { o[k] = l; return }
+      if (l === undefined) { o[k] = r; return }
+      const L = pj(l), R = pj(r), B = b === undefined ? { ok: false } : pj(b);
+      if (!L.ok || !R.ok) { o[k] = nb && b === l ? r : l; return }
+      o[k] = JSON.stringify(m3(B.ok ? B.v : undefined, L.v, R.v, nb));
+    });
+    return o;
+  }
+
+  // ---------- sync ----------
+  function errMsg(e) {
+    if (e.big) return 'Too much data to sync (usually photos). Remove a few photos, then tap Sync now.';
+    if (e.old) return 'Please update this browser (or iOS) to sync this data.';
+    if (e.net || (typeof navigator.onLine === 'boolean' && !navigator.onLine)) return 'No connection: it will sync by itself as soon as you are back online.';
+    return 'Sync paused for a moment, retrying automatically…';
+  }
+  async function sync() {
+    if (!ST) return; if (busy) { again = true; return } busy = true; clearTimeout(retry); clearTimeout(timer);
+    let changed = false;
+    try {
+      const key = await aes(ub64(ST.k));
+      for (let i = 0; ; i++) {
+        if (i > 4) throw new Error('loop');
+        const r = await req('GET', '/s/' + ST.sid);
+        if (r.data && r.t !== ST.t) {
+          const remote = await open_(key, r.data);
+          if (!ST.d) { if (apply(remote)) changed = true; ST.t = r.t; saveSt(); await putBase(remote) }
+          else {
+            const merged = merge(await getBase(), snapshot(), remote);
+            if (apply(merged)) changed = true;
+            ST.t = r.t; saveSt();
+            if (same(merged, remote)) { ST.d = false; saveSt(); await putBase(remote) }
+          }
+        }
+        if (!ST.d) break;
+        const e0 = edits, snap = snapshot();
+        if (r.t === ST.t || !r.data) { const b = await getBase(); if (b && same(b, snap)) { ST.d = false; saveSt(); break } }
+        const data = await seal(key, snap);
+        if (data.length > MAXLEN) throw Object.assign(new Error('big'), { big: true });
+        const t = Math.max(Date.now(), (r.t || 0) + 1);
+        try { await req('PUT', '/s/' + ST.sid, { t, data }) }
+        catch (e) { if (e.status === 409) continue; if (e.status === 400) e.big = true; throw e }
+        ST.t = t; if (edits === e0) ST.d = false; else again = true;
+        saveSt(); await putBase(snap); break;
+      }
+      ST.last = Date.now(); saveSt(); fails = 0; status('Synced ✓');
+    } catch (e) {
+      fails++; status(errMsg(e));
+      retry = setTimeout(sync, e.big ? 600000 : Math.min(300000, 5000 * 2 ** Math.min(fails, 6)));
+    } finally {
+      busy = false;
+      if (changed) { if (box) box.remove(); location.reload(); return }
+      if (again) { again = false; schedule(500) }
+    }
+  }
+  const schedule = (ms) => { if (!ST || applying) return; clearTimeout(timer); timer = setTimeout(sync, ms == null ? 2500 : ms) };
+  const typing = () => { const a = document.activeElement; return a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) };
 
   // Watch writes to the app's keys.
-  const set0 = Storage.prototype.setItem;
-  Storage.prototype.setItem = function (k, v) { set0.call(this, k, v); if (this === localStorage && CFG.keys.includes(k)) schedule() };
+  Storage.prototype.setItem = function (k, v) {
+    set0.call(this, k, v);
+    if (this === localStorage && !applying && ST && CFG.keys.includes(k)) { edits++; if (!ST.d) { ST.d = true; saveSt() } schedule() }
+  };
 
   // ---------- UI ----------
   let box;
-  function status(t) { const s = box && box.querySelector('#bic-st'); if (s) s.textContent = t }
+  function status(t) { lastMsg = t; const s = box && box.querySelector('#bic-st'); if (s) s.textContent = t }
   function css() {
     if (document.getElementById('bic-css')) return;
     const s = document.createElement('style'); s.id = 'bic-css';
@@ -299,23 +429,30 @@ code{background:var(--soft);border-radius:6px;padding:1px 5px;font-size:13px;wor
     document.head.appendChild(s);
   }
   function view(html) { box.querySelector('.p').innerHTML = html + '<div id="bic-st"></div><button class="b g" data-x="close">Close</button>' }
+  function ago(t) { if (!t) return 'not yet'; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString() }
   function home() {
-    if (ST) view(`<h3>⇅ Sync is on</h3><p>${CFG.name} stays the same on your linked devices. Changes sync within a few seconds.</p>
-      <button class="b" data-x="add">Link another device</button><button class="b g" data-x="now">Sync now</button><button class="b g" data-x="off">Turn off sync on this device</button>
-      <small>Encrypted on your device before it is sent. No account, no email.</small>`);
-    else view(`<h3>⇅ Sync phone & computer</h3><p>Use ${CFG.name} on your phone and your computer, with the same data.</p>
+    if (ST) {
+      view(`<h3>⇅ Sync is on</h3><p>${CFG.name} stays the same on your linked devices. Changes sync by themselves within a few seconds, from any device.</p>
+      <button class="b" data-x="add">Link another device</button><button class="b g" data-x="now">Sync now</button><button class="b g" data-x="off">Turn off sync for this app on this device</button>
+      <small>One link is enough: all your BestInCell apps on this device sync with it. Last synced: ${ago(ST.last)}${ST.d ? ' · changes waiting to be sent' : ''}. Encrypted on your device before it is sent. No account, no email.</small>`);
+      if (lastMsg && lastMsg !== 'Synced ✓') status(lastMsg);
+    } else if (loadG()) view(`<h3>⇅ Sync is off for this app</h3><p>Your other BestInCell apps on this device are linked. Turn it on to sync ${CFG.name} too, no code needed.</p>
+      <button class="b" data-x="rejoin">Turn on sync for this app</button>
+      <small>Your data is encrypted on this device before it is sent.</small>`);
+    else view(`<h3>⇅ Sync phone & computer</h3><p>Use ${CFG.name} on your phone and your computer, with the same data. You link once: all your BestInCell apps sync.</p>
       <button class="b" data-x="start">This is my first device</button><button class="b g" data-x="join">I have a code from my other device</button>
       <small>No account, no email, no password. Your data is encrypted on this device before it is sent.</small>`);
   }
   async function showCode() {
     view('<h3>Link a device</h3><p>Creating your code…</p>');
     const kb = await codeKeyBox();
-    view(`<h3>Your code</h3><p>On your other device, open ${CFG.name} → Sync → “I have a code”, and type:</p><div class="code">${kb}</div><small>Valid for 10 minutes, works once.</small>`);
+    view(`<h3>Your code</h3><p>On your other device, open any BestInCell app → Sync → “I have a code”, and type:</p><div class="code">${kb}</div><small>Valid for 10 minutes, works once. It links all your apps at once.</small>`);
   }
   async function codeKeyBox() {
+    const G = loadG();
     for (let i = 0; i < 5; i++) {
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
-      const box_ = await seal(await codeKey(code), { sid: ST.sid, k: ST.k });
+      const box_ = await seal(await codeKey(code), Object.assign({ sid: ST.sid, k: ST.k }, G ? { g: G.g, gk: G.k } : {}));
       try { await req('POST', '/pair', { code, box: box_ }); return code } catch (e) { if (e.status !== 409) throw e }
     }
     throw new Error('busy');
@@ -323,30 +460,59 @@ code{background:var(--soft);border-radius:6px;padding:1px 5px;font-size:13px;wor
   async function act(x) {
     try {
       if (x === 'close') return box.remove();
-      if (x === 'start') { if (CFG.beforeStart) CFG.beforeStart(); ST = { sid: hex(crypto.getRandomValues(new Uint8Array(16))), k: b64(crypto.getRandomValues(new Uint8Array(32))), t: 0 }; saveSt(); await push(); return showCode() }
+      if (x === 'start') {
+        if (CFG.beforeStart) CFG.beforeStart();
+        if (!loadG()) saveG({ g: hex(crypto.getRandomValues(new Uint8Array(16))), k: b64(crypto.getRandomValues(new Uint8Array(32))) });
+        const G = loadG(); OFF = false;
+        ST = { v: 2, sid: await derive(G.g), k: G.k, t: 0, d: true, j: 1, g: G.g }; saveSt(); listen(); await sync(); return showCode();
+      }
+      if (x === 'rejoin') { OFF = false; localStorage.removeItem(stKey()); status('Turning on…'); await autoJoin(); return home() }
       if (x === 'add') return showCode();
-      if (x === 'now') { status('Syncing…'); if (!(await pull())) await push(); return }
-      if (x === 'off') { localStorage.removeItem(LS + ':' + CFG.keys[0]); ST = null; return home() }
-      if (x === 'join') return view(`<h3>Type the code</h3><p>Shown on your other device.</p><input id="bic-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code"><button class="b" data-x="link">Link</button><small>This device will take the data of your other device.</small>`);
+      if (x === 'now') { status('Syncing…'); fails = 0; await sync(); return }
+      if (x === 'off') { await idb('readwrite', (s) => s.delete(ST.sid)); ST = { off: 1 }; saveSt(); ST = null; OFF = true; lastMsg = ''; return home() }
+      if (x === 'join') return view(`<h3>Type the code</h3><p>Shown on your other device.</p><input id="bic-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code"><button class="b" data-x="link">Link</button><small>This device will take the data of your other device, for all your BestInCell apps.</small>`);
       if (x === 'link') {
         const code = (box.querySelector('#bic-code').value || '').replace(/\D/g, '');
         if (code.length !== 6) return status('Type the 6 digits');
         status('Linking…');
-        const r = await req('GET', '/pair/' + code).catch(() => null);
-        if (!r) return status('Code not found or expired');
+        let r;
+        try { r = await req('GET', '/pair/' + code) }
+        catch (e) { return status(e.status === 429 ? 'Too many wrong codes. Please wait 10 minutes, then try again.' : e.net ? 'No connection. Check your internet and try again.' : 'Code not found or expired') }
         const v = await open_(await codeKey(code), r.box);
-        ST = { sid: v.sid, k: v.k, t: 0 }; saveSt(); status('Linked! Loading your data…');
-        if (!(await pull(true))) { await push(); home() }
+        if (v.g) saveG({ g: v.g, k: v.gk || v.k });
+        OFF = false; ST = { v: 2, sid: v.sid, k: v.k, t: 0, d: false }; if (v.g && v.sid === (await derive(v.g))) { ST.j = 1; ST.g = v.g }
+        saveSt(); listen(); status('Linked! Loading your data…');
+        await sync(); home(); status(lastMsg);
       }
     } catch (e) { status('Something went wrong. Check your connection and try again.') }
   }
+  let listening = false;
+  function listen() {
+    if (listening) return; listening = true;
+    addEventListener('focus', () => schedule(300));
+    addEventListener('online', () => schedule(300));
+    addEventListener('pageshow', () => schedule(300));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') schedule(300); else if (ST && ST.d) sync() });
+    setInterval(() => { if (ST && document.visibilityState === 'visible' && !typing() && !busy) sync() }, POLL);
+  }
+  // Another app on this site was just linked (or re-linked): follow the group.
+  function regroup() {
+    const G = loadG(); if (!G) return;
+    if (ST && ST.j && ST.g !== G.g) { ST = null; saveSt() }
+    if (!ST) autoJoin();
+  }
   window.BICSync = {
     init(cfg) {
-      CFG = Object.assign(CFG, cfg); loadSt();
-      if (ST) { pull(); addEventListener('focus', () => pull()); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pull(); else if (timer) { clearTimeout(timer); push() } }) }
+      CFG = Object.assign(CFG, cfg); loadSt(); promote();
+      if (ST && ST.v !== 2) { ST.v = 2; ST.d = true; saveSt() } // v1 device: merge once with the server, nothing is overwritten
+      if (ST) { listen(); sync() }
+      regroup();
+      addEventListener('storage', (e) => { if (e.key === GK) regroup() });
+      addEventListener('focus', regroup);
     },
     open() { css(); box && box.remove(); box = document.createElement('div'); box.id = 'bic-sync'; box.innerHTML = '<div class="p"></div>'; box.addEventListener('click', (e) => { const x = e.target.dataset.x; if (x) act(x); else if (e.target === box) box.remove() }); document.body.appendChild(box); home() },
     get on() { return !!ST },
+    _merge: merge,
   };
 })();
 
@@ -654,6 +820,13 @@ function migrate(x) {
   Object.keys(f).forEach(k => { if (k === 'settings') return; if (Array.isArray(f[k]) ? !Array.isArray(x[k]) : (x[k] == null || typeof x[k] !== typeof f[k])) x[k] = f[k]; });
   x.settings = Object.assign({}, f.settings, x.settings || {});
   if (x.settings.wage == null) x.settings.wage = '';
+  // items added before 6 Nov 2026 had no id, so tick, edit and delete could not find them.
+  // The id comes from the content, so every synced device gives the same item the same id.
+  ['bills', 'pays', 'goals', 'debts', 'accounts', 'spends', 'income'].forEach(k => { const seen = {}; x[k].forEach(it => {
+    if (!it || typeof it !== 'object' || it.id) return;
+    let h = 0; const t = k + JSON.stringify(it); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+    h = 'o' + (h >>> 0).toString(36); seen[h] = (seen[h] || 0) + 1; it.id = h + (seen[h] > 1 ? '_' + seen[h] : '');
+  }); });
   return x;
 }
 let S;
@@ -1100,7 +1273,7 @@ function addSpend(amt, cat, note, date) {
   S.spends.push({ id: uid(), ts: Date.now(), date: date || iso(today()), amt, cat: cat || OTHER(), note: note || '' }); return true;
 }
 function billForm(b) {
-  const isNew = !b; b = b || { name: '', amt: '', freq: 'monthly', day: today().getDate(), day2: 15, start: iso(today()), every: 6, setAside: false, paid: {} };
+  const isNew = !b; b = b || { id: uid(), name: '', amt: '', freq: 'monthly', day: today().getDate(), day2: 15, start: iso(today()), every: 6, setAside: false, paid: {} };
   openForm(isNew ? 'Add a bill' : 'Edit bill', [{ k: 'name', l: 'Bill', v: b.name, ph: 'Rent, phone, Netflix…' }, { k: 'amt', l: 'Amount', t: 'num', v: b.amt },
     { k: 'freq', l: 'How often does it come round?', t: 'select', opts: Object.entries(FREQ), v: b.freq },
     { k: 'day', l: 'Day of the month', t: 'num', v: b.day, show: 'freq=monthly|twice', hint: 'Type 31 for the last day of the month' },
@@ -1112,7 +1285,7 @@ function billForm(b) {
     isNew ? null : () => { S.bills = S.bills.filter(x => x !== b); done(); });
 }
 function payForm(p) {
-  const isNew = !p; p = p || { name: 'Paycheck', amt: '', freq: 'biweekly', day: 1, day2: 15, start: iso(addDays(today(), 7)), early: true };
+  const isNew = !p; p = p || { id: uid(), name: 'Paycheck', amt: '', freq: 'biweekly', day: 1, day2: 15, start: iso(addDays(today(), 7)), early: true };
   openForm(isNew ? 'Add a paycheck' : 'Edit paycheck', [{ k: 'name', l: 'Name', v: p.name }, { k: 'amt', l: 'Usual amount (what reaches your account)', t: 'num', v: p.amt },
     { k: 'freq', l: 'How often?', t: 'select', opts: Object.entries(PFREQ), v: p.freq },
     { k: 'day', l: 'Day of the month', t: 'num', v: p.day, show: 'freq=monthly|twice' }, { k: 'day2', l: 'Second day', t: 'num', v: p.day2, show: 'freq=twice' },
@@ -1132,13 +1305,13 @@ function balanceForm() {
     v => { S.settings.balance = num(v.bal); S.settings.balanceTs = Date.now(); done('Balance updated'); });
 }
 function goalForm(g) {
-  const isNew = !g; g = g || { name: '', target: '', saved: 0 };
+  const isNew = !g; g = g || { id: uid(), name: '', target: '', saved: 0 };
   openForm(isNew ? 'New savings goal' : esc(g.name), [{ k: 'name', l: 'Goal', v: g.name }, { k: 'target', l: 'Target', t: 'num', v: g.target }, { k: 'saved', l: 'Saved so far', t: 'num', v: g.saved }].concat(isNew ? [] : [{ k: 'add', l: 'Add money now (moves it out of your spending money)', t: 'num', v: '' }]),
     v => { const add = num(v.add); Object.assign(g, { name: v.name || 'Goal', target: num(v.target), saved: num(v.saved) + add }); if (add) S.moves.push({ id: uid(), ts: Date.now(), amt: add, what: 'goal' }); if (isNew) S.goals.push(g); done(); },
     isNew ? null : () => { S.goals = S.goals.filter(x => x !== g); done(); });
 }
 function debtForm(d) {
-  const isNew = !d; d = d || { name: '', bal: '', rate: '', min: '', pays: [] };
+  const isNew = !d; d = d || { id: uid(), name: '', bal: '', rate: '', min: '', pays: [] };
   openForm(isNew ? 'Add a debt' : esc(d.name), [{ k: 'name', l: 'Name', v: d.name, ph: 'Credit card, car loan…' }, { k: 'bal', l: 'Balance owed', t: 'num', v: d.bal }, { k: 'rate', l: 'Interest rate (% per year)', t: 'num', v: d.rate }, { k: 'min', l: 'Minimum payment per month', t: 'num', v: d.min }].concat(isNew ? [] : [{ k: 'pay', l: 'Record a payment now', t: 'num', v: '' }]),
     v => { const pay = num(v.pay); Object.assign(d, { name: v.name || 'Debt', bal: Math.max(0, num(v.bal) - pay), rate: num(v.rate), min: num(v.min) }); if (pay) { d.pays.push({ date: iso(today()), amt: pay }); S.moves.push({ id: uid(), ts: Date.now(), amt: pay, what: 'debt' }); } if (isNew) S.debts.push(d); done(pay ? 'Payment recorded' : null); },
     isNew ? null : () => { S.debts = S.debts.filter(x => x !== d); done(); },
